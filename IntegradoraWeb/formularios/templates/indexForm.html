@@ -680,82 +680,59 @@
 
         async function viewFormResponses(formId) {
             try {
-                // Load form details
-                const formResponse = await fetch(`/formularios/api/${formId}/`);
-                if (!formResponse.ok) throw new Error('Form not found');
-                const form = await formResponse.json();
+            // Load form details
+            const formResponse = await fetch(`/formularios/api/${formId}/`);
+            if (!formResponse.ok) throw new Error('Form not found');
+            const form = await formResponse.json();
 
-                // Load questions
-                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
-                if (!questionsResponse.ok) throw new Error('Error loading questions');
-                const questions = await questionsResponse.json();
+            // Load questions
+            const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
+            if (!questionsResponse.ok) throw new Error('Error loading questions');
+            const questions = await questionsResponse.json();
 
-                // Create questions map
-                const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
+            // Create questions map
+            const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
 
-                // Load registros for this form
-                const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
-                if (!registrosResponse.ok) throw new Error('Error loading responses');
-                const registros = await registrosResponse.json();
+            // Load registros for this form
+            const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
+            if (!registrosResponse.ok) throw new Error('Error loading responses');
+            const registros = await registrosResponse.json();
 
-                // Prepare modal content
-                let responsesHTML = '<div class="space-y-8">';
-                
-                // Create a Set to track processed registro IDs
-                const processedRegistroIds = new Set();
-                
-                for (const registro of registros) {
-                    // Skip if we've already processed this registro
-                    if (processedRegistroIds.has(registro.id)) continue;
-                    processedRegistroIds.add(registro.id);
+            // Prepare modal content
+            let responsesHTML = '<div class="space-y-8">';
+            const uniqueResponses = new Set();
+            const respuestasPromises = registros.map(async (registro) => {
+                const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
+                if (!respuestasResponse.ok) return null;
+                const respuestas = await respuestasResponse.json();
 
-                    // Get all responses for this registro in a single request
-                    const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
-                    if (!respuestasResponse.ok) continue;
-                    const respuestas = await respuestasResponse.json();
+                return respuestas
+                    .filter(respuesta => {
+                        const uniqueKey = `${respuesta.pregunta}-${respuesta.contenido}`;
+                        if (uniqueResponses.has(uniqueKey)) return false;
+                        uniqueResponses.add(uniqueKey);
+                        return true;
+                    })
+                    .map(respuesta => `
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="border-l-4 border-indigo-500 pl-4">
+                        <p class="font-medium text-gray-900">Pregunta: ${questionMap[respuesta.pregunta]?.contenido || 'Pregunta desconocida'}</p>
+                        <p class="mt-1 text-gray-800">Respuesta: ${respuesta.contenido}</p>
+                        </div>
+                    </div>
+                    `).join('');
+            });
 
-                    // Create a map to store unique responses per question
-                    const uniqueResponses = new Map();
-                    respuestas.forEach(respuesta => {
-                        if (!uniqueResponses.has(respuesta.pregunta)) {
-                            uniqueResponses.set(respuesta.pregunta, respuesta);
-                        }
-                    });
+            const respuestasHTMLArray = await Promise.all(respuestasPromises);
+            responsesHTML += respuestasHTMLArray.filter(html => html !== null).join('');
+            responsesHTML += '</div>';
 
-                    // Only add the registro if it has any responses
-                    if (uniqueResponses.size > 0) {
-                        responsesHTML += `
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <p class="text-sm text-gray-500">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
-                                        <p class="text-sm text-gray-500">Usuario: ${registro.usuario || 'Anónimo'}</p>
-                                    </div>
-                                </div>
-                                <div class="space-y-4">
-                                    ${questions.map(question => {
-                                        const respuesta = uniqueResponses.get(question.id);
-                                        return `
-                                            <div class="border-l-4 border-indigo-500 pl-4">
-                                                <p class="font-medium text-gray-900">Pregunta: ${question.contenido}</p>
-                                                <p class="mt-1 text-gray-800">Respuesta: ${respuesta ? respuesta.contenido : 'Sin respuesta'}</p>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-
-                responsesHTML += '</div>';
-
-                // Update modal content
-                document.getElementById('responsesModal').classList.remove('hidden');
-                document.getElementById('responsesList').innerHTML = responsesHTML || '<p class="text-gray-500">No hay respuestas aún.</p>';
+            // Update modal content
+            document.getElementById('responsesModal').classList.remove('hidden');
+            document.getElementById('responsesList').innerHTML = responsesHTML || '<p class="text-gray-500">No hay respuestas aún.</p>';
             } catch (error) {
-                console.error('Error:', error);
-                alert('Error al cargar las respuestas');
+            console.error('Error:', error);
+            alert('Error al cargar las respuestas');
             }
         }
 
