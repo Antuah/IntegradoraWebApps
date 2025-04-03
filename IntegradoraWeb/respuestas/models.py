@@ -10,6 +10,13 @@ class Respuesta(models.Model):
     contenido = models.TextField()
     fecha_respuesta = models.DateTimeField(auto_now_add=True)
     validada = models.BooleanField(null=True, blank=True)  # Para preguntas abiertas (None = No revisada)
+    registro = models.ForeignKey(
+    'registroRespuestas.RegistroRespuesta', # O usa RegistroRespuesta si lo importaste
+    on_delete=models.CASCADE,
+    related_name='respuestas_individuales', # <-- CAMBIADO: Nombre único y descriptivo
+    null=True, # Para permitir nulos en filas existentes durante la migración
+    blank=True # Permite que sea opcional (aunque siempre lo asignaremos)
+    )
 
     def es_correcta(self):
         """Determina si la respuesta es correcta"""

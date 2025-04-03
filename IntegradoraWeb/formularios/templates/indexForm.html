@@ -679,60 +679,106 @@
         }
 
         async function viewFormResponses(formId) {
+            console.log(`--- Iniciando viewFormResponses con formId: ${formId} ---`); // <-- Añade esto
+            if (!formId || formId === 'undefined' || formId === 'null') {
+            console.error("¡El ID del formulario es inválido!", formId);
+            alert("Error crítico: No se proporcionó un ID de formulario válido.");
+            return;
+            }
             try {
-            // Load form details
-            const formResponse = await fetch(`/formularios/api/${formId}/`);
-            if (!formResponse.ok) throw new Error('Form not found');
-            const form = await formResponse.json();
+                console.log(`Workspaceing data for form ${formId}`);
 
-            // Load questions
-            const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
-            if (!questionsResponse.ok) throw new Error('Error loading questions');
-            const questions = await questionsResponse.json();
+                // Load questions
+                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!questionsResponse.ok) throw new Error('Error loading questions');
+                const questions = await questionsResponse.json();
+                const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
+                console.log('Questions loaded:', questionMap);
 
-            // Create questions map
-            const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
+                // Load registros for this form
+                const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
+                if (!registrosResponse.ok) throw new Error('Error loading response records (registros)');
+                const registros = await registrosResponse.json();
+                console.log('Registros loaded:', registros);
 
-            // Load registros for this form
-            const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
-            if (!registrosResponse.ok) throw new Error('Error loading responses');
-            const registros = await registrosResponse.json();
+                if (registros.length === 0) {
+                    document.getElementById('responsesList').innerHTML = '<p class="text-gray-500">No hay envíos registrados para este formulario.</p>';
+                    document.getElementById('responsesModal').classList.remove('hidden');
+                    return;
+                }
 
-            // Prepare modal content
-            let responsesHTML = '<div class="space-y-8">';
-            const uniqueResponses = new Set();
-            const respuestasPromises = registros.map(async (registro) => {
-                const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
-                if (!respuestasResponse.ok) return null;
-                const respuestas = await respuestasResponse.json();
+                // Prepare modal content - group by registro
+                let allResponsesHTML = '<div class="space-y-6">';
 
-                return respuestas
-                    .filter(respuesta => {
-                        const uniqueKey = `${respuesta.pregunta}-${respuesta.contenido}`;
-                        if (uniqueResponses.has(uniqueKey)) return false;
-                        uniqueResponses.add(uniqueKey);
-                        return true;
-                    })
-                    .map(respuesta => `
-                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                        <div class="border-l-4 border-indigo-500 pl-4">
-                        <p class="font-medium text-gray-900">Pregunta: ${questionMap[respuesta.pregunta]?.contenido || 'Pregunta desconocida'}</p>
-                        <p class="mt-1 text-gray-800">Respuesta: ${respuesta.contenido}</p>
-                        </div>
-                    </div>
-                    `).join('');
-            });
+                const fetchPromises = registros.map(async (registro, index) => {
+                    try {
+                        console.log(`Workspaceing responses for registro ${registro.id}`);
+                        const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
+                        if (!respuestasResponse.ok) {
+                            console.error(`Failed to fetch responses for registro ${registro.id}`);
+                            return `<div class="p-4 border border-red-300 rounded-lg bg-red-50 mb-4">
+                                        <p class="font-semibold text-red-700">Error al cargar respuestas para el Envío ID: ${registro.id}</p>
+                                    </div>`;
+                        }
+                        const respuestas = await respuestasResponse.json();
+                        console.log(`Responses for registro ${registro.id}:`, respuestas);
 
-            const respuestasHTMLArray = await Promise.all(respuestasPromises);
-            responsesHTML += respuestasHTMLArray.filter(html => html !== null).join('');
-            responsesHTML += '</div>';
+                        if (respuestas.length === 0) {
+                            return `<div class="p-4 border border-gray-300 rounded-lg bg-gray-50 mb-4">
+                                        <p class="font-semibold text-gray-700">Envío ID: ${registro.id} (Sin respuestas encontradas)</p>
+                                        <p class="text-xs text-gray-500">Fecha Registro: ${new Date(registro.fecha_creacion || Date.now()).toLocaleString()}</p> 
+                                    </div>`;
+                        }
 
-            // Update modal content
-            document.getElementById('responsesModal').classList.remove('hidden');
-            document.getElementById('responsesList').innerHTML = responsesHTML || '<p class="text-gray-500">No hay respuestas aún.</p>';
+                        // Build HTML for this specific registro
+                        let registroHTML = `<div class="p-4 border border-indigo-200 rounded-lg bg-white mb-4 shadow-sm">
+                                                <h3 class="text-lg font-semibold text-indigo-800 mb-3">Envío #${index + 1}</h3>
+                                                <div class="space-y-3">`;
+
+                        registroHTML += respuestas.map(respuesta => {
+                            const questionData = questionMap[respuesta.pregunta];
+                            const questionText = questionData ? questionData.contenido : `ID Pregunta: ${respuesta.pregunta}`;
+                            const questionType = questionData ? questionData.tipo : 'desconocido';
+
+                            return `
+                                <div class="border-l-4 border-gray-300 pl-3">
+                                    <p class="text-sm font-medium text-gray-600">${questionText}</p>
+                                    <p class="mt-1 text-base text-gray-900">${respuesta.contenido || '(Vacío)'}</p>
+                                    ${respuesta.validada !== null ?
+                                        `<p class="text-xs ${respuesta.validada ? 'text-green-600' : 'text-red-600'}">(${respuesta.validada ? 'Correcta' : 'Incorrecta'})</p>`
+                                        : ''
+                                    }
+                                </div>
+                            `;
+                        }).join('');
+
+                        registroHTML += `</div></div>`;
+                        return registroHTML;
+
+                    } catch (error) {
+                        console.error(`Error processing registro ${registro.id}:`, error);
+                        return `<div class="p-4 border border-red-300 rounded-lg bg-red-50 mb-4">
+                                    <p class="font-semibold text-red-700">Error procesando Envío ID: ${registro.id}</p>
+                                    <p class="text-sm text-red-600">${error.message}</p>
+                                </div>`;
+                    }
+                });
+
+                // Wait for all fetch/process promises to resolve
+                const htmlResults = await Promise.all(fetchPromises);
+
+                allResponsesHTML += htmlResults.join('');
+                allResponsesHTML += '</div>';
+
+                // Update modal content
+                document.getElementById('responsesList').innerHTML = allResponsesHTML;
+                document.getElementById('responsesModal').classList.remove('hidden');
+                console.log('Modal updated');
+
             } catch (error) {
-            console.error('Error:', error);
-            alert('Error al cargar las respuestas');
+                console.error('Error in viewFormResponses:', error);
+                document.getElementById('responsesList').innerHTML = `<p class="text-red-600 font-semibold">Error al cargar las respuestas: ${error.message}</p><p class="text-sm text-gray-500">Consulta la consola para más detalles.</p>`;
+                document.getElementById('responsesModal').classList.remove('hidden');
             }
         }
 
