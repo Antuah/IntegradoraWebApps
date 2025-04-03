@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respuestas del Formulario - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900" id="formTitle"></h1>
+                <p class="mt-2 text-gray-600" id="formDescription"></p>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="bg-white shadow rounded-lg p-6">
+                <div id="responsesList" class="space-y-6">
+                    <!-- Responses will be loaded here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let formId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const pathParts = window.location.pathname.split('/');
+            formId = pathParts[pathParts.length - 2]; // Get form ID from URL
+            if (formId) {
+                loadFormAndResponses(formId);
+            }
+        });
+
+        async function loadFormAndResponses(formId) {
+            try {
+                // Load form details
+                const formResponse = await fetch(`/formularios/api/${formId}/`);
+                if (!formResponse.ok) throw new Error('Form not found');
+                const form = await formResponse.json();
+
+                document.getElementById('formTitle').textContent = form.titulo;
+                document.getElementById('formDescription').textContent = form.descripcion || '';
+
+                // Load all registro respuestas for this form
+                const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
+                if (!registrosResponse.ok) throw new Error('Error loading responses');
+                const registros = await registrosResponse.json();
+
+                // Load questions
+                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!questionsResponse.ok) throw new Error('Error loading questions');
+                const questions = await questionsResponse.json();
+
+                // Create a map of question IDs to questions
+                const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
+
+                // Load all responses and group them by registro
+                const responsesList = document.getElementById('responsesList');
+                let responsesHTML = '';
+
+                for (const registro of registros) {
+                    const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
+                    if (!respuestasResponse.ok) continue;
+                    const respuestas = await respuestasResponse.json();
+
+                    responsesHTML += `
+                        <div class="border-b pb-6 mb-6">
+                            <p class="text-sm text-gray-500 mb-4">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                            ${respuestas.map(respuesta => `
+                                <div class="mb-4">
+                                    <h3 class="font-medium">${questionMap[respuesta.pregunta]?.contenido || 'Pregunta no encontrada'}</h3>
+                                    <p class="mt-1 text-gray-800">${respuesta.contenido}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                responsesList.innerHTML = responsesHTML || '<p class="text-gray-500">No hay respuestas aún.</p>';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar las respuestas');
+            }
+        }
+    </script>
+</body>
+</html>

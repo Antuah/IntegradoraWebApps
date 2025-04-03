@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FormSIEF Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .form-card:hover {
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+        .sidebar-icon:hover {
+            background-color: #4338ca;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-16 bg-indigo-600 flex flex-col items-center py-4 space-y-4">
+            <a href="/" class="sidebar-icon p-3 rounded-lg text-white cursor-pointer">
+                <i class="fas fa-home"></i>
+            </a>
+            <a href="/formularios/agregar/" class="sidebar-icon p-3 rounded-lg text-white cursor-pointer">
+                <i class="fas fa-list-alt"></i>
+            </a>
+            <div class="sidebar-icon p-3 rounded-lg text-white cursor-pointer">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="sidebar-icon p-3 rounded-lg text-white cursor-pointer">
+                <i class="fas fa-folder"></i>
+            </div>
+            <a href="/usuarios/agregar/" class="sidebar-icon p-3 rounded-lg text-white cursor-pointer hover:bg-indigo-700">
+                <i class="fas fa-users"></i>
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto">
+            <!-- Top Bar -->
+            <div class="bg-white shadow-sm p-4 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-800">FormSIEF</h1>
+                    <div class="relative">
+                        <input type="text" placeholder="Buscar formularios..." 
+                               class="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus mr-2"></i>Nuevo Formulario
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div class="p-6">
+                <!-- Forms Section -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Formularios</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {% for form in forms %}
+                        <div class="form-card bg-white rounded-lg shadow-md p-6 cursor-pointer">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800">{{ form.titulo }}</h3>
+                                    <p class="text-sm text-gray-500">Creado: {{ form.fecha_creacion|date:"d/m/Y" }}</p>
+                                </div>
+                                <div class="text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4">{{ form.descripcion|truncatechars:100 }}</p>
+                            <div class="flex justify-between items-center">
+                                <div class="flex space-x-2">
+                                    <span class="text-sm text-gray-500">
+                                        <i class="fas fa-list-alt mr-1"></i>Ver detalles
+                                    </span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button class="p-2 hover:bg-gray-100 rounded-full">
+                                        <i class="fas fa-edit text-gray-600"></i>
+                                    </button>
+                                    <button class="p-2 hover:bg-gray-100 rounded-full">
+                                        <i class="fas fa-copy text-gray-600"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Statistics Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Estadísticas</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Total Formularios</span>
+                                <span class="font-semibold">{{ forms.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Actividad Reciente</h3>
+                        <div class="space-y-4">
+                            {% for activity in recent_activity %}
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                <p class="text-sm text-gray-600">{{ activity.description }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Search functionality
+            const searchInput = document.querySelector('input[placeholder="Buscar formularios..."]');
+            const formCards = document.querySelectorAll('.form-card');
+
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                formCards.forEach(card => {
+                    const title = card.querySelector('h3').textContent.toLowerCase();
+                    const description = card.querySelector('p').textContent.toLowerCase();
+                    if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

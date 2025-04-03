@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responder Formulario - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900" id="formTitle">Formulario</h1>
+                <p class="mt-2 text-gray-600" id="formDescription"></p>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="bg-white shadow rounded-lg p-6">
+                <form id="responseForm" onsubmit="handleSubmit(event)">
+                    <div id="questionsList" class="space-y-6">
+                        <!-- Questions will be loaded here -->
+                    </div>
+                    <div class="mt-6">
+                        <button type="submit"
+                            class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                            Enviar Respuestas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let formId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get formId from URL path
+            const pathParts = window.location.pathname.split('/');
+            // Find the index after 'view' in the URL
+            const viewIndex = pathParts.indexOf('view');
+            if (viewIndex !== -1 && viewIndex + 1 < pathParts.length) {
+                formId = pathParts[viewIndex + 1];
+                if (formId) {
+                    loadForm(formId);
+                } else {
+                    alert('No se especificó un formulario');
+                }
+            } else {
+                alert('No se especificó un formulario');
+            }
+        });
+
+
+        async function loadForm(formId) {
+            try {
+                // Load form details
+                const formResponse = await fetch(`/formularios/api/${formId}/`);
+                if (!formResponse.ok) throw new Error('Form not found');
+                const form = await formResponse.json();
+
+                document.getElementById('formTitle').textContent = form.titulo;
+                document.getElementById('formDescription').textContent = form.descripcion || '';
+
+                // Load questions with explicit form filter
+                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!questionsResponse.ok) throw new Error('Error loading questions');
+                const questions = await questionsResponse.json();
+
+                // Additional client-side filter to ensure only questions from this form are shown
+                const filteredQuestions = questions.filter(question => question.formulario === parseInt(formId));
+
+                const questionsList = document.getElementById('questionsList');
+                questionsList.innerHTML = filteredQuestions.map(question => `
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-medium mb-2">${question.contenido}</h3>
+                        ${question.tipo === 'opcion_multiple' ?
+                        `<div class="space-y-2" id="options-${question.id}">
+                                <!-- Options will be loaded here -->
+                            </div>` :
+                        `<textarea 
+                                name="question-${question.id}" 
+                                class="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                                rows="3"
+                                required
+                            ></textarea>`
+                    }
+                    </div>
+                `).join('');
+
+                // Load options only for filtered questions
+                for (const question of filteredQuestions) {
+                    if (question.tipo === 'opcion_multiple') {
+                        await loadOptions(question.id);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar el formulario');
+            }
+        }
+
+        async function loadOptions(questionId) {
+            try {
+                const response = await fetch(`/opciones/api/?pregunta=${questionId}`);
+                if (!response.ok) throw new Error('Error loading options');
+                const options = await response.json();
+
+                const optionsContainer = document.getElementById(`options-${questionId}`);
+                if (optionsContainer) {
+                    optionsContainer.innerHTML = options.map(option => `
+                        <label class="block">
+                            <input 
+                                type="radio" 
+                                name="question-${questionId}" 
+                                value="${option.contenido}"
+                                required
+                                class="mr-2"
+                            >
+                            ${option.contenido}
+                        </label>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            try {
+                // First create the registro
+                const registroResponse = await fetch('/registroRespuestas/api/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        formulario: parseInt(formId)
+                    })
+                });
+
+                if (!registroResponse.ok) throw new Error('Error creating response record');
+                const registro = await registroResponse.json();
+
+                // Then prepare and send the responses
+                const form = event.target;
+                const formElements = Array.from(form.elements);
+                const responses = formElements
+                    .filter(element => element.name.startsWith('question-'))
+                    .map(element => ({
+                        pregunta: parseInt(element.name.split('-')[1]),
+                        contenido: element.value,
+                        registro: registro.id
+                    }));
+
+                // Save each response
+                for (const response of responses) {
+                    const respuestaResponse = await fetch('/respuestas/api/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify(response)
+                    });
+                    
+                    if (!respuestaResponse.ok) {
+                        throw new Error('Error saving response');
+                    }
+                }
+
+                alert('¡Gracias por tus respuestas!');
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al enviar respuestas: ' + error.message);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+
+</html>

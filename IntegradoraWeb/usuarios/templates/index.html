@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition flex items-center">
+                            <i class="fas fa-home mr-2"></i>Inicio
+                        </a>
+                        <h1 class="text-3xl font-bold text-gray-900">Usuarios</h1>
+                    </div>
+                    <button onclick="openModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus mr-2"></i>Nuevo Usuario
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Users List -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersList" class="bg-white divide-y divide-gray-200">
+                                <!-- Users will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="userModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 hidden" aria-hidden="true">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg px-4 pt-5 pb-4 overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full sm:p-6">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modalTitle">Nuevo Usuario</h3>
+                    <form id="userForm" onsubmit="handleSubmit(event)">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="username" class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" name="username" id="username" required
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                                <input type="password" name="password" id="password" required
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="rol" class="block text-sm font-medium text-gray-700">Rol</label>
+                                <select id="rol" name="rol" required
+                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="normal">Usuario Normal</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-5 sm:mt-6 flex justify-end space-x-3">
+                            <button type="button" onclick="closeModal()"
+                                    class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                    class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editingId = null;
+
+        // Load users when page loads
+        document.addEventListener('DOMContentLoaded', loadUsers);
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/usuarios/api/', {
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const users = await response.json();
+                
+                const usersList = document.getElementById('usersList');
+                usersList.innerHTML = users.map(user => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.username}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.rol === 'admin' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
+                                ${user.rol === 'admin' ? 'Administrador' : 'Usuario Normal'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-900">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar usuarios');
+            }
+        }
+
+        function openModal(userId = null) {
+            editingId = userId;
+            document.getElementById('modalTitle').textContent = userId ? 'Editar Usuario' : 'Nuevo Usuario';
+            document.getElementById('userModal').classList.remove('hidden');
+            document.getElementById('userForm').reset();
+            
+            if (userId) loadUserData(userId);
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.add('hidden');
+            editingId = null;
+        }
+
+        async function loadUserData(userId) {
+            try {
+                const response = await fetch(`/usuarios/api/${userId}/`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const user = await response.json();
+                
+                document.getElementById('username').value = user.username;
+                document.getElementById('rol').value = user.rol;
+                document.getElementById('password').required = false;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar datos del usuario');
+            }
+        }
+
+        // Add this function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Update handleSubmit function
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                rol: document.getElementById('rol').value
+            };
+
+            const password = document.getElementById('password').value;
+            if (password) formData.password = password;
+
+            try {
+                const url = editingId ? `/usuarios/api/${editingId}/` : '/usuarios/api/';
+                const method = editingId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(JSON.stringify(errorData));
+                }
+                
+                closeModal();
+                loadUsers();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al guardar usuario: ' + error.message);
+            }
+        }
+
+        // Update deleteUser function
+        async function deleteUser(userId) {
+            if (!confirm('¿Está seguro de eliminar este usuario?')) return;
+            
+            try {
+                const response = await fetch(`/usuarios/api/${userId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+                loadUsers();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar usuario');
+            }
+        }
+        
+        // Add this function after loadUsers() and before openModal()
+        async function editUser(userId) {
+            try {
+                openModal(userId);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al editar usuario');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Formularios - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <a href="/"
+                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition flex items-center">
+                            <i class="fas fa-home mr-2"></i>Inicio
+                        </a>
+                        <h1 class="text-3xl font-bold text-gray-900">Formularios</h1>
+                    </div>
+                    <button onclick="openFormModal()"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus mr-2"></i>Nuevo Formulario
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Forms List -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Título</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Descripción</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Fecha</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="formsList" class="bg-white divide-y divide-gray-200">
+                                <!-- Forms will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Form Modal -->
+    <div id="formModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 hidden" aria-hidden="true">
+        <div class="flex items-center justify-center min-h-screen">
+            <div
+                class="bg-white rounded-lg px-4 pt-5 pb-4 overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full sm:p-6">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modalTitle">Nuevo Formulario</h3>
+                    <form id="formForm" onsubmit="handleFormSubmit(event)">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="titulo" class="block text-sm font-medium text-gray-700">Título</label>
+                                <input type="text" name="titulo" id="titulo" required
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="descripcion"
+                                    class="block text-sm font-medium text-gray-700">Descripción</label>
+                                <textarea name="descripcion" id="descripcion" rows="3"
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            </div>
+                        </div>
+                        <div class="mt-5 sm:mt-6 flex justify-end space-x-3">
+                            <button type="button" onclick="closeFormModal()"
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Modal -->
+    <!-- After the form modal -->
+    <div id="questionModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 hidden">
+        <div class="flex items-center justify-center min-h-screen">
+            <div
+                class="bg-white rounded-lg px-4 pt-5 pb-4 overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full sm:p-6">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="questionModalTitle">Nueva Pregunta
+                    </h3>
+                    <form id="questionForm" onsubmit="handleQuestionSubmit(event)">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="tipo" class="block text-sm font-medium text-gray-700">Tipo de
+                                    Pregunta</label>
+                                <select id="tipo" name="tipo" required onchange="toggleOptionsSection()"
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                                    <option value="abierta">Pregunta Abierta</option>
+                                    <option value="opcion_multiple">Opción Múltiple</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="contenido" class="block text-sm font-medium text-gray-700">Contenido de la
+                                    Pregunta</label>
+                                <input type="text" id="contenido" required
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                            </div>
+                            <div id="optionsSection" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700">Opciones</label>
+                                <div id="optionsList" class="space-y-2 mt-2"></div>
+                                <button type="button" onclick="addOption()"
+                                    class="mt-2 text-sm text-indigo-600 hover:text-indigo-900">
+                                    <i class="fas fa-plus mr-1"></i>Agregar Opción
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-5 flex justify-end space-x-3">
+                            <button type="button" onclick="closeQuestionModal()"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Responses Modal -->
+    <div id="responsesModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-gray-900">Respuestas del Formulario</h3>
+                        <button onclick="document.getElementById('responsesModal').classList.add('hidden')" 
+                                class="text-gray-400 hover:text-gray-500">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="px-6 py-4 overflow-y-auto" style="max-height: calc(80vh - 8rem);">
+                    <div id="responsesList">
+                        <!-- Responses will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- After the forms table -->
+    <div id="questionsContainer" class="mt-8 hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">Preguntas del Formulario</h2>
+            <button onclick="openQuestionModal()"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                <i class="fas fa-plus mr-2"></i>Agregar Pregunta
+            </button>
+        </div>
+        <div id="questionsList" class="space-y-4">
+            <!-- Questions will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        let editingFormId = null;
+        let editingQuestionId = null;
+        let currentFormId = null;
+
+        // Load forms when page loads
+        document.addEventListener('DOMContentLoaded', loadForms);
+
+        // Update the loadForms function to include a new button
+        async function loadForms() {
+            try {
+                const response = await fetch('/formularios/api/');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const forms = await response.json();
+
+                const formsList = document.getElementById('formsList');
+                formsList.innerHTML = forms.map(form => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${form.titulo}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${form.descripcion || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(form.fecha_creacion).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="shareForm(${form.id})" class="text-green-600 hover:text-green-900 mr-3" title="Compartir">
+                                <i class="fas fa-share"></i>
+                            </button>
+                            <a href="/formularios/${form.id}/preguntas/" class="text-blue-600 hover:text-blue-900 mr-3" title="Gestionar Preguntas">
+                                <i class="fas fa-question-circle"></i>
+                            </a>
+                            <button onclick="viewFormResponses(${form.id})" class="text-blue-600 hover:text-blue-900 mr-3" title="Ver Respuestas">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="editForm(${form.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteForm(${form.id})" class="text-red-600 hover:text-red-900">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                        
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar formularios');
+            }
+        }
+
+        function openFormModal(formId = null) {
+            editingFormId = formId;
+            document.getElementById('modalTitle').textContent = formId ? 'Editar Formulario' : 'Nuevo Formulario';
+            document.getElementById('formModal').classList.remove('hidden');
+            document.getElementById('formForm').reset();
+
+            if (formId) loadFormData(formId);
+        }
+
+        function closeFormModal() {
+            document.getElementById('formModal').classList.add('hidden');
+            editingFormId = null;
+        }
+
+        async function loadFormData(formId) {
+            try {
+                const response = await fetch(`/formularios/api/${formId}/`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const form = await response.json();
+
+                document.getElementById('titulo').value = form.titulo;
+                document.getElementById('descripcion').value = form.descripcion || '';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar datos del formulario');
+            }
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const formData = {
+                titulo: document.getElementById('titulo').value,
+                descripcion: document.getElementById('descripcion').value
+            };
+
+            try {
+                const url = editingFormId ? `/formularios/api/${editingFormId}/` : '/formularios/api/';
+                const method = editingFormId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(JSON.stringify(errorData));
+                }
+
+                closeFormModal();
+                loadForms();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al guardar formulario: ' + error.message);
+            }
+        }
+
+        async function deleteForm(formId) {
+            if (!confirm('¿Está seguro de eliminar este formulario?')) return;
+
+            try {
+                const response = await fetch(`/formularios/api/${formId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+                loadForms();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar formulario');
+            }
+        }
+
+        function editForm(formId) {
+            openFormModal(formId);
+        }
+
+        // Questions Management
+        async function manageQuestions(formId) {
+            try {
+                currentFormId = formId;
+                
+                // Load form details
+                const formResponse = await fetch(`/formularios/api/${formId}/`);
+                if (!formResponse.ok) throw new Error('Form not found');
+                const form = await formResponse.json();
+        
+                // Update modal title
+                document.getElementById('questionsModalTitle').textContent = `Preguntas del Formulario: ${form.titulo}`;
+        
+                // Show modal and load questions
+                document.getElementById('questionsListModal').classList.remove('hidden');
+                await viewQuestions(formId);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar el formulario y sus preguntas');
+            }
+        }
+
+        function closeQuestionsListModal() {
+            document.getElementById('questionsListModal').classList.add('hidden');
+        }
+
+        // Update viewQuestions function (remove scrolling behavior)
+        async function viewQuestions(formId) {
+            try {
+                const response = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const questions = await response.json();
+        
+                const questionsList = document.getElementById('questionsList');
+                
+                if (questions.length === 0) {
+                    questionsList.innerHTML = '<p class="text-gray-500 text-center py-4">No hay preguntas para este formulario</p>';
+                    return;
+                }
+        
+                questionsList.innerHTML = questions
+                    .filter(question => question.formulario === parseInt(formId))
+                    .map(question => `
+                        <div class="bg-white shadow rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-medium">${question.contenido}</h3>
+                                    <p class="text-sm text-gray-500">Tipo: ${question.tipo}</p>
+                                    ${question.tipo === 'opcion_multiple' ? 
+                                        `<div id="options-${question.id}" class="mt-2">
+                                            <!-- Options will be loaded here -->
+                                        </div>` : ''}
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editQuestion(${question.id})" class="text-indigo-600 hover:text-indigo-900">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteQuestion(${question.id})" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <button onclick="viewResponses(${question.id})" class="text-blue-600 hover:text-blue-900">
+                                        <i class="fas fa-reply"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+        
+                // Load options for multiple choice questions
+                for (const question of questions) {
+                    if (question.tipo === 'opcion_multiple' && question.formulario === parseInt(formId)) {
+                        await loadOptions(question.id);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar preguntas');
+            }
+        }
+
+        async function loadOptions(questionId) {
+            try {
+                const response = await fetch(`/opciones/api/?pregunta=${questionId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to load options');
+                }
+
+                const options = await response.json();
+
+                const optionsContainer = document.getElementById(`options-${questionId}`);
+                if (optionsContainer) {
+                    if (options.length === 0) {
+                        optionsContainer.innerHTML = '<p class="text-sm text-gray-500">No hay opciones disponibles</p>';
+                    } else {
+                        optionsContainer.innerHTML = options.map(option => `
+                            <div class="flex items-center">
+                                <span class="text-sm ${option.es_correcta ? 'text-green-600 font-medium' : 'text-gray-600'}">
+                                    ${option.contenido}
+                                    ${option.es_correcta ? ' (Correcta)' : ''}
+                                </span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading options:', error);
+                const optionsContainer = document.getElementById(`options-${questionId}`);
+                if (optionsContainer) {
+                    optionsContainer.innerHTML = '<p class="text-sm text-red-500">Error al cargar las opciones</p>';
+                }
+            }
+        }
+
+        function openQuestionModal(questionId = null) {
+            editingQuestionId = questionId;
+            document.getElementById('questionModalTitle').textContent = questionId ? 'Editar Pregunta' : 'Nueva Pregunta';
+            document.getElementById('questionModal').classList.remove('hidden');
+            document.getElementById('questionForm').reset();
+
+            if (questionId) loadQuestionData(questionId);
+        }
+
+        function closeQuestionModal() {
+            document.getElementById('questionModal').classList.add('hidden');
+            editingQuestionId = null;
+            document.getElementById('optionsList').innerHTML = '';
+        }
+
+        function toggleOptionsSection() {
+            const tipo = document.getElementById('tipo').value;
+            document.getElementById('optionsSection').classList.toggle('hidden', tipo !== 'opcion_multiple');
+        }
+
+        function addOption() {
+            const optionsList = document.getElementById('optionsList');
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'flex items-center space-x-2 mt-2';
+            optionDiv.innerHTML = `
+                <input type="text" placeholder="Opción" class="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600">
+                    <span class="ml-2 text-sm text-gray-600">Correcta</span>
+                </label>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-900">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            optionsList.appendChild(optionDiv);
+        }
+
+        async function handleQuestionSubmit(event) {
+            event.preventDefault();
+
+            const formData = {
+                formulario: currentFormId,  // Make sure currentFormId is set correctly
+                tipo: document.getElementById('tipo').value,
+                contenido: document.getElementById('contenido').value
+            };
+
+            try {
+                const url = editingQuestionId ? `/preguntas/api/${editingQuestionId}/` : '/preguntas/api/';
+                const method = editingQuestionId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Error saving question');
+                }
+
+                const questionData = await response.json();
+
+                // Save options if it's a multiple choice question
+                if (formData.tipo === 'opcion_multiple') {
+                    const optionsList = document.getElementById('optionsList');
+                    const options = Array.from(optionsList.children).map(optionDiv => ({
+                        pregunta: questionData.id,
+                        contenido: optionDiv.querySelector('input[type="text"]').value,
+                        es_correcta: optionDiv.querySelector('input[type="checkbox"]').checked
+                    }));
+
+                    // Delete existing options if editing
+                    if (editingQuestionId) {
+                        await fetch(`/opciones/api/?pregunta=${editingQuestionId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRFToken': getCookie('csrftoken')
+                            }
+                        });
+                    }
+
+                    // Create new options
+                    for (const option of options) {
+                        if (!option.contenido.trim()) continue;
+
+                        const optionResponse = await fetch('/opciones/api/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify(option)
+                        });
+
+                        if (!optionResponse.ok) {
+                            const optionError = await optionResponse.json();
+                            throw new Error(optionError.detail || 'Error saving options');
+                        }
+                    }
+                }
+
+                closeQuestionModal();
+                await viewQuestions(currentFormId);  // Reload questions for the current form
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al guardar pregunta: ' + error.message);
+            }
+        }
+
+        async function manageQuestions(formId) {
+            currentFormId = formId;
+            try {
+                // Load form details
+                const formResponse = await fetch(`/formularios/api/${formId}/`);
+                if (!formResponse.ok) throw new Error('Network response was not ok');
+                const form = await formResponse.json();
+        
+                // Update title to show which form we're managing
+                document.getElementById('questionsContainer').querySelector('h2').textContent =
+                    `Preguntas del Formulario: ${form.titulo}`;
+        
+                // Show questions container and load questions
+                document.getElementById('questionsContainer').classList.remove('hidden');
+                await viewQuestions(formId);
+        
+                // Scroll to questions section
+                document.getElementById('questionsContainer').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar el formulario y sus preguntas');
+            }
+        }
+
+        function shareForm(formId) {
+            const url = `${window.location.origin}/formularios/view/${formId}/`;
+            navigator.clipboard.writeText(url)
+                .then(() => {
+                    alert('¡Enlace copiado al portapapeles!\nComparte este enlace para que otros puedan responder el formulario.');
+                })
+                .catch(() => {
+                    // Fallback for browsers that don't support clipboard API
+                    const input = document.createElement('input');
+                    input.value = url;
+                    document.body.appendChild(input);
+                    input.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(input);
+                    alert('¡Enlace copiado al portapapeles!\nComparte este enlace para que otros puedan responder el formulario.');
+                });
+        }
+
+
+        async function loadQuestions(formId) {
+            try {
+                const response = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const questions = await response.json();
+
+                // Update questions list in the UI
+                const questionsList = document.getElementById('questionsList');
+                questionsList.innerHTML = questions.map(question => `
+                    <div class="bg-white shadow rounded-lg p-4 mb-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-medium">${question.contenido}</h3>
+                                <p class="text-sm text-gray-500">Tipo: ${question.tipo}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="editQuestion(${question.id})" class="text-indigo-600 hover:text-indigo-900">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteQuestion(${question.id})" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button onclick="viewResponses(${question.id})" class="text-blue-600 hover:text-blue-900">
+                                    <i class="fas fa-reply"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar preguntas');
+            }
+        }
+
+        async function deleteQuestion(questionId) {
+            if (!confirm('¿Está seguro de eliminar esta pregunta?')) return;
+
+            try {
+                const response = await fetch(`/preguntas/api/${questionId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+                await loadQuestions(currentFormId);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar pregunta');
+            }
+        }
+
+        async function viewResponses(questionId) {
+            try {
+                const response = await fetch(`/respuestas/api/?pregunta=${questionId}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const responses = await response.json();
+
+                // Show responses in a modal or section
+                const responsesList = document.getElementById('responsesList');
+                responsesList.innerHTML = responses.map(response => `
+                    <div class="bg-gray-50 p-3 rounded mb-2">
+                        <p class="text-sm">${response.contenido}</p>
+                        <p class="text-xs text-gray-500">
+                            Fecha: ${new Date(response.fecha_respuesta).toLocaleDateString()}
+                            ${response.validada !== null ?
+                        `- Estado: ${response.validada ? 'Correcta' : 'Incorrecta'}` :
+                        '- Pendiente de validación'}
+                        </p>
+                    </div>
+                `).join('');
+
+                // Show responses modal
+                document.getElementById('responsesModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar respuestas');
+            }
+        }
+
+        async function viewFormResponses(formId) {
+            try {
+                // Load form details
+                const formResponse = await fetch(`/formularios/api/${formId}/`);
+                if (!formResponse.ok) throw new Error('Form not found');
+                const form = await formResponse.json();
+
+                // Load questions
+                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
+                if (!questionsResponse.ok) throw new Error('Error loading questions');
+                const questions = await questionsResponse.json();
+
+                // Create questions map
+                const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
+
+                // Load registros for this form
+                const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
+                if (!registrosResponse.ok) throw new Error('Error loading responses');
+                const registros = await registrosResponse.json();
+
+                // Prepare modal content
+                let responsesHTML = '<div class="space-y-8">';
+                
+                // Create a Set to track processed registro IDs
+                const processedRegistroIds = new Set();
+                
+                for (const registro of registros) {
+                    // Skip if we've already processed this registro
+                    if (processedRegistroIds.has(registro.id)) continue;
+                    processedRegistroIds.add(registro.id);
+
+                    // Get all responses for this registro in a single request
+                    const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
+                    if (!respuestasResponse.ok) continue;
+                    const respuestas = await respuestasResponse.json();
+
+                    // Create a map to store unique responses per question
+                    const uniqueResponses = new Map();
+                    respuestas.forEach(respuesta => {
+                        if (!uniqueResponses.has(respuesta.pregunta)) {
+                            uniqueResponses.set(respuesta.pregunta, respuesta);
+                        }
+                    });
+
+                    // Only add the registro if it has any responses
+                    if (uniqueResponses.size > 0) {
+                        responsesHTML += `
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                                        <p class="text-sm text-gray-500">Usuario: ${registro.usuario || 'Anónimo'}</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    ${questions.map(question => {
+                                        const respuesta = uniqueResponses.get(question.id);
+                                        return `
+                                            <div class="border-l-4 border-indigo-500 pl-4">
+                                                <p class="font-medium text-gray-900">Pregunta: ${question.contenido}</p>
+                                                <p class="mt-1 text-gray-800">Respuesta: ${respuesta ? respuesta.contenido : 'Sin respuesta'}</p>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                responsesHTML += '</div>';
+
+                // Update modal content
+                document.getElementById('responsesModal').classList.remove('hidden');
+                document.getElementById('responsesList').innerHTML = responsesHTML || '<p class="text-gray-500">No hay respuestas aún.</p>';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar las respuestas');
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+
+</html>
