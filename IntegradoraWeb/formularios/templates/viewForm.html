@@ -246,15 +246,13 @@ async function handleSubmit(event) {
             }
         }
 
-        alert('¡Gracias por tus respuestas!');
-        // window.location.href = '/'; // Redirigir
-
-    } catch (error) {
-        console.error('Error general en handleSubmit:', error);
-        alert('Ocurrió un error al enviar tus respuestas: ' + error.message);
-    }
-}
-
+                alert('¡Gracias por tus respuestas!');
+                window.location.href = '/dashboard/';  // Changed from '/' to '/dashboard/'
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al enviar respuestas: ' + error.message);
+            }
+        }
 
         function getCookie(name) {
             let cookieValue = null;

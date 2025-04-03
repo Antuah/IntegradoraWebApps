@@ -6,6 +6,6 @@ router = DefaultRouter()
 router.register(r'formularios', FormularioViewSet, basename='formulario')
 
 urlpatterns = [
-    path('', dashboard, name='dashboard'),
+    path('dashboard/', dashboard, name='dashboard'),
     path('api/', include(router.urls)),
 ]
