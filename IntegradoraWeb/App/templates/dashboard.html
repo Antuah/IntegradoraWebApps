@@ -36,6 +36,12 @@
             <a href="/usuarios/agregar/" class="sidebar-icon p-3 rounded-lg text-white cursor-pointer hover:bg-indigo-700">
                 <i class="fas fa-users"></i>
             </a>
+            
+            <!-- Add logout icon at the bottom with margin-top:auto to push it to the bottom -->
+            <div class="flex-grow"></div>
+            <a href="{% url 'logout' %}" class="sidebar-icon p-3 rounded-lg text-white cursor-pointer hover:bg-indigo-700 hover:bg-red-700" title="Cerrar Sesión">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
         </div>
 
         <!-- Main Content -->

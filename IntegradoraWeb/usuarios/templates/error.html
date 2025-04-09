@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - FormSIEF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    Error
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    {{ mensaje }}
+                </p>
+            </div>
+            
+            <div class="text-center">
+                <a href="{% url 'login' %}" class="text-sm text-indigo-600 hover:text-indigo-500">
+                    Volver al inicio de sesión
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
