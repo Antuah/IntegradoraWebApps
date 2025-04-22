@@ -245,9 +245,6 @@
                         console.log(`Respuesta guardada con éxito para pregunta ${responseData.pregunta}`, respuestaGuardada);
                     }
                 }
-
-                alert('¡Gracias por tus respuestas!');
-                window.location.href = '/dashboard/';  // Changed from '/' to '/dashboard/'
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error al enviar respuestas: ' + error.message);
@@ -267,21 +264,30 @@
                     });
 
                     if (!puntajeResponse.ok) {
-                        // El backend ya debería loguear el error, aquí solo notificamos si falló la llamada
                         console.error(`La solicitud para calcular puntaje falló con estado ${puntajeResponse.status}.`);
-                        // Opcional: alert('Hubo un problema al calcular el puntaje final.');
+                        // El puntaje no se pudo obtener
                     } else {
                         const puntajeResult = await puntajeResponse.json();
                         console.log('Cálculo de puntaje completado:', puntajeResult);
-                        // Opcional: podrías mostrar el puntaje aquí si quisieras, pero ya está guardado
+                        // --- GUARDAR EL PUNTAJE OBTENIDO ---
+                        puntajeFinal = puntajeResult.puntaje_automatico;
                     }
                 } catch (scoreError) {
                     console.error('Error durante la llamada fetch para calcular puntaje:', scoreError);
-                    // Opcional: alert('Error de red al intentar calcular el puntaje.');
+                    // El puntaje no se pudo obtener
                 }
             }
             // --- FIN NUEVO PASO 4 ---
-
+            let mensajeFinal = '¡Gracias por tus respuestas!';
+            if (puntajeFinal !== null && puntajeFinal !== undefined) {
+                // Si tenemos un puntaje, lo añadimos al mensaje
+                mensajeFinal += `\n\nTu puntaje automático es: ${puntajeFinal}`;
+                window.location.href = `/dashboard/`;
+            } else if (registroId) {
+                mensajeFinal += `\n\nEl puntaje se calculará, pero no se pudo mostrar en este momento.`;
+            }
+            // Mostramos el mensaje final construido
+            alert(mensajeFinal);
         }
 
         function getCookie(name) {
