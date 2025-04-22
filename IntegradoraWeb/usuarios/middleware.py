@@ -7,11 +7,17 @@ class AuthenticationMiddleware:
 
     def __call__(self, request):
         # URLs that don't require authentication
-        public_urls = ['/usuarios/login/']
+        public_urls = [
+            '/usuarios/login/', 
+            '/usuarios/recuperar-password/',
+            '/usuarios/restablecer-password/'
+        ]
         
-        if request.path not in public_urls and not request.path.startswith('/static/'):
-            if not request.session.get('user_id'):
-                return redirect('login')
+        # Check if the path starts with any of the public URLs
+        is_public = any(request.path.startswith(url) for url in public_urls) or request.path.startswith('/static/')
+        
+        if not is_public and not request.session.get('user_id'):
+            return redirect('login')
         
         response = self.get_response(request)
         return response
