@@ -158,8 +158,8 @@
                 <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium text-gray-900">Respuestas del Formulario</h3>
-                        <button onclick="document.getElementById('responsesModal').classList.add('hidden')" 
-                                class="text-gray-400 hover:text-gray-500">
+                        <button onclick="document.getElementById('responsesModal').classList.add('hidden')"
+                            class="text-gray-400 hover:text-gray-500">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -323,15 +323,15 @@
         async function manageQuestions(formId) {
             try {
                 currentFormId = formId;
-                
+
                 // Load form details
                 const formResponse = await fetch(`/formularios/api/${formId}/`);
                 if (!formResponse.ok) throw new Error('Form not found');
                 const form = await formResponse.json();
-        
+
                 // Update modal title
                 document.getElementById('questionsModalTitle').textContent = `Preguntas del Formulario: ${form.titulo}`;
-        
+
                 // Show modal and load questions
                 document.getElementById('questionsListModal').classList.remove('hidden');
                 await viewQuestions(formId);
@@ -351,14 +351,14 @@
                 const response = await fetch(`/preguntas/api/?formulario=${formId}`);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const questions = await response.json();
-        
+
                 const questionsList = document.getElementById('questionsList');
-                
+
                 if (questions.length === 0) {
                     questionsList.innerHTML = '<p class="text-gray-500 text-center py-4">No hay preguntas para este formulario</p>';
                     return;
                 }
-        
+
                 questionsList.innerHTML = questions
                     .filter(question => question.formulario === parseInt(formId))
                     .map(question => `
@@ -367,8 +367,8 @@
                                 <div>
                                     <h3 class="text-lg font-medium">${question.contenido}</h3>
                                     <p class="text-sm text-gray-500">Tipo: ${question.tipo}</p>
-                                    ${question.tipo === 'opcion_multiple' ? 
-                                        `<div id="options-${question.id}" class="mt-2">
+                                    ${question.tipo === 'opcion_multiple' ?
+                            `<div id="options-${question.id}" class="mt-2">
                                             <!-- Options will be loaded here -->
                                         </div>` : ''}
                                 </div>
@@ -386,7 +386,7 @@
                             </div>
                         </div>
                     `).join('');
-        
+
                 // Load options for multiple choice questions
                 for (const question of questions) {
                     if (question.tipo === 'opcion_multiple' && question.formulario === parseInt(formId)) {
@@ -560,15 +560,15 @@
                 const formResponse = await fetch(`/formularios/api/${formId}/`);
                 if (!formResponse.ok) throw new Error('Network response was not ok');
                 const form = await formResponse.json();
-        
+
                 // Update title to show which form we're managing
                 document.getElementById('questionsContainer').querySelector('h2').textContent =
                     `Preguntas del Formulario: ${form.titulo}`;
-        
+
                 // Show questions container and load questions
                 document.getElementById('questionsContainer').classList.remove('hidden');
                 await viewQuestions(formId);
-        
+
                 // Scroll to questions section
                 document.getElementById('questionsContainer').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
@@ -681,9 +681,9 @@
         async function viewFormResponses(formId) {
             console.log(`--- Iniciando viewFormResponses con formId: ${formId} ---`); // <-- Añade esto
             if (!formId || formId === 'undefined' || formId === 'null') {
-            console.error("¡El ID del formulario es inválido!", formId);
-            alert("Error crítico: No se proporcionó un ID de formulario válido.");
-            return;
+                console.error("¡El ID del formulario es inválido!", formId);
+                alert("Error crítico: No se proporcionó un ID de formulario válido.");
+                return;
             }
             try {
                 console.log(`Workspaceing data for form ${formId}`);
@@ -731,28 +731,43 @@
                         }
 
                         // Build HTML for this specific registro
-                        let registroHTML = `<div class="p-4 border border-indigo-200 rounded-lg bg-white mb-4 shadow-sm">
-                                                <h3 class="text-lg font-semibold text-indigo-800 mb-3">Envío #${index + 1}</h3>
-                                                <div class="space-y-3">`;
+                        const puntaje = registro.puntaje_automatico; // <-- OBTENER EL PUNTAJE
+                        const puntajeTexto = (puntaje === null || puntaje === undefined)
+                            ? 'Pendiente' // O 'N/A' o lo que prefieras si es null
+                            : puntaje === 1 
+                                ? '1 punto' 
+                                : `${puntaje} puntos`; // Texto a mostrar
 
+                        // Añadimos el puntaje al encabezado del bloque del registro
+                        let registroHTML = `
+                    <div class="p-4 border border-indigo-200 rounded-lg bg-white mb-4 shadow-sm">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-lg font-semibold text-indigo-800">Envío #${index + 1} (ID: ${registro.id})</h3>
+                            <span class="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                Puntaje Automático: ${puntajeTexto}  
+                            </span>
+                        </div>
+                        <div class="space-y-3">`; // <-- Inicio del contenedor de respuestas individuales
+
+                        // Mapeamos las respuestas individuales (código existente)
                         registroHTML += respuestas.map(respuesta => {
                             const questionData = questionMap[respuesta.pregunta];
                             const questionText = questionData ? questionData.contenido : `ID Pregunta: ${respuesta.pregunta}`;
-                            const questionType = questionData ? questionData.tipo : 'desconocido';
 
+                            // Generar HTML para cada respuesta (código existente)
                             return `
-                                <div class="border-l-4 border-gray-300 pl-3">
-                                    <p class="text-sm font-medium text-gray-600">${questionText}</p>
-                                    <p class="mt-1 text-base text-gray-900">${respuesta.contenido || '(Vacío)'}</p>
-                                    ${respuesta.validada !== null ?
-                                        `<p class="text-xs ${respuesta.validada ? 'text-green-600' : 'text-red-600'}">(${respuesta.validada ? 'Correcta' : 'Incorrecta'})</p>`
-                                        : ''
-                                    }
-                                </div>
-                            `;
+                        <div class="border-l-4 border-gray-300 pl-3">
+                            <p class="text-sm font-medium text-gray-600">${questionText}</p>
+                            <p class="mt-1 text-base text-gray-900">${respuesta.contenido || '(Vacío)'}</p>
+                             ${respuesta.validada !== null ?
+                                    `<p class="text-xs ${respuesta.validada ? 'text-green-600' : 'text-red-600'}"> (${respuesta.validada ? 'Correcta' : 'Incorrecta'})</p>`
+                                    : ''
+                                }
+                        </div>
+                    `;
                         }).join('');
 
-                        registroHTML += `</div></div>`;
+                        registroHTML += `</div></div>`; // Cierra space-y-3 y el div del registro
                         return registroHTML;
 
                     } catch (error) {

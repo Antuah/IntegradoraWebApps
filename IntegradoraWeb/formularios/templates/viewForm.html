@@ -129,122 +129,122 @@
                 console.error('Error:', error);
             }
         }
-       // Reemplaza tu función handleSubmit con esta versión mejorada
+        // Reemplaza tu función handleSubmit con esta versión mejorada
 
-async function handleSubmit(event) {
-    event.preventDefault();
-    const form = event.target;
-    const csrfToken = getCookie('csrftoken');
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const csrfToken = getCookie('csrftoken');
 
-    if (!formId || !csrfToken) {
-        console.error("Error: Falta formId o CSRF token.", { formId, csrfToken });
-        alert("Error de configuración al enviar.");
-        return;
-    }
+            if (!formId || !csrfToken) {
+                console.error("Error: Falta formId o CSRF token.", { formId, csrfToken });
+                alert("Error de configuración al enviar.");
+                return;
+            }
 
-    let registroId = null; // Para almacenar el ID del registro creado
+            let registroId = null; // Para almacenar el ID del registro creado
 
-    try {
-        // --- PASO 1: Crear el RegistroRespuesta ---
-        console.log(`Intentando crear RegistroRespuesta para formulario ID: ${formId}`);
-        const registroResponse = await fetch('/registroRespuestas/api/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                formulario: parseInt(formId)
-                // Añade 'usuario': userId si necesitas enviar el ID del usuario
-            })
-        });
-
-        // --- Verificación robusta de la respuesta ---
-        if (!registroResponse.ok) {
-            let errorMsg = `Error ${registroResponse.status} al crear el registro.`;
             try {
-                const errorData = await registroResponse.json();
-                errorMsg += ` Detalles: ${JSON.stringify(errorData)}`;
-            } catch (e) {
-                errorMsg += " No se pudo obtener detalle del error.";
-            }
-            console.error(errorMsg);
-            throw new Error('No se pudo crear el registro de respuesta inicial.');
-        }
+                // --- PASO 1: Crear el RegistroRespuesta ---
+                console.log(`Intentando crear RegistroRespuesta para formulario ID: ${formId}`);
+                const registroResponse = await fetch('/registroRespuestas/api/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        formulario: parseInt(formId)
+                        // Añade 'usuario': userId si necesitas enviar el ID del usuario
+                    })
+                });
 
-        const registroCreado = await registroResponse.json();
-        registroId = registroCreado.id; // Guarda el ID
-        console.log(`RegistroRespuesta creado con éxito. ID: ${registroId}`, registroCreado);
-
-        if (!registroId) {
-            throw new Error('El registro se creó pero no se obtuvo un ID válido.');
-        }
-
-        // --- PASO 2: Preparar y Enviar Respuestas Individuales ---
-        const respuestasParaEnviar = [];
-        const preguntasProcesadas = new Set();
-        const elements = Array.from(form.elements);
-
-        for (const element of elements) {
-            if (element.name && element.name.startsWith('question-')) {
-                const preguntaId = parseInt(element.name.split('-')[1]);
-                if (preguntasProcesadas.has(preguntaId)) continue;
-
-                let contenidoRespuesta = null;
-                const inputType = element.type;
-
-                if (inputType === 'radio') {
-                    const selectedRadio = form.querySelector(`input[name="${element.name}"]:checked`);
-                    if (selectedRadio) contenidoRespuesta = selectedRadio.value;
-                    preguntasProcesadas.add(preguntaId);
-                } else if (inputType === 'checkbox') {
-                    const checkedCheckboxes = form.querySelectorAll(`input[name="${element.name}"]:checked`);
-                    if (checkedCheckboxes.length > 0) {
-                        contenidoRespuesta = Array.from(checkedCheckboxes).map(cb => cb.value).join(',');
+                // --- Verificación robusta de la respuesta ---
+                if (!registroResponse.ok) {
+                    let errorMsg = `Error ${registroResponse.status} al crear el registro.`;
+                    try {
+                        const errorData = await registroResponse.json();
+                        errorMsg += ` Detalles: ${JSON.stringify(errorData)}`;
+                    } catch (e) {
+                        errorMsg += " No se pudo obtener detalle del error.";
                     }
-                    preguntasProcesadas.add(preguntaId);
-                } else { // text, textarea, etc.
-                    contenidoRespuesta = element.value;
-                    preguntasProcesadas.add(preguntaId);
+                    console.error(errorMsg);
+                    throw new Error('No se pudo crear el registro de respuesta inicial.');
                 }
 
-                if (preguntaId && contenidoRespuesta !== null && contenidoRespuesta !== '') {
-                    respuestasParaEnviar.push({
-                        pregunta: preguntaId,
-                        contenido: contenidoRespuesta,
-                        registro: registroId // <-- VINCULAR AL REGISTRO CREADO
-                        // usuario: userId // Añade si es necesario
+                const registroCreado = await registroResponse.json();
+                registroId = registroCreado.id; // Guarda el ID
+                console.log(`RegistroRespuesta creado con éxito. ID: ${registroId}`, registroCreado);
+
+                if (!registroId) {
+                    throw new Error('El registro se creó pero no se obtuvo un ID válido.');
+                }
+
+                // --- PASO 2: Preparar y Enviar Respuestas Individuales ---
+                const respuestasParaEnviar = [];
+                const preguntasProcesadas = new Set();
+                const elements = Array.from(form.elements);
+
+                for (const element of elements) {
+                    if (element.name && element.name.startsWith('question-')) {
+                        const preguntaId = parseInt(element.name.split('-')[1]);
+                        if (preguntasProcesadas.has(preguntaId)) continue;
+
+                        let contenidoRespuesta = null;
+                        const inputType = element.type;
+
+                        if (inputType === 'radio') {
+                            const selectedRadio = form.querySelector(`input[name="${element.name}"]:checked`);
+                            if (selectedRadio) contenidoRespuesta = selectedRadio.value;
+                            preguntasProcesadas.add(preguntaId);
+                        } else if (inputType === 'checkbox') {
+                            const checkedCheckboxes = form.querySelectorAll(`input[name="${element.name}"]:checked`);
+                            if (checkedCheckboxes.length > 0) {
+                                contenidoRespuesta = Array.from(checkedCheckboxes).map(cb => cb.value).join(',');
+                            }
+                            preguntasProcesadas.add(preguntaId);
+                        } else { // text, textarea, etc.
+                            contenidoRespuesta = element.value;
+                            preguntasProcesadas.add(preguntaId);
+                        }
+
+                        if (preguntaId && contenidoRespuesta !== null && contenidoRespuesta !== '') {
+                            respuestasParaEnviar.push({
+                                pregunta: preguntaId,
+                                contenido: contenidoRespuesta,
+                                registro: registroId // <-- VINCULAR AL REGISTRO CREADO
+                                // usuario: userId // Añade si es necesario
+                            });
+                        }
+                    }
+                }
+
+                console.log("Respuestas preparadas para enviar:", respuestasParaEnviar);
+
+                // --- PASO 3: Enviar cada Respuesta ---
+                for (const responseData of respuestasParaEnviar) {
+                    console.log(`Enviando respuesta para pregunta ${responseData.pregunta}`, responseData);
+                    const respuestaResponse = await fetch('/respuestas/api/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify(responseData)
                     });
+
+                    if (!respuestaResponse.ok) {
+                        let errorMsg = `Error ${respuestaResponse.status} al guardar respuesta para pregunta ${responseData.pregunta}.`;
+                        try {
+                            const errorData = await respuestaResponse.json();
+                            errorMsg += ` Detalles: ${JSON.stringify(errorData)}`;
+                        } catch (e) { }
+                        console.error(errorMsg);
+                    } else {
+                        const respuestaGuardada = await respuestaResponse.json();
+                        console.log(`Respuesta guardada con éxito para pregunta ${responseData.pregunta}`, respuestaGuardada);
+                    }
                 }
-            }
-        }
-
-        console.log("Respuestas preparadas para enviar:", respuestasParaEnviar);
-
-        // --- PASO 3: Enviar cada Respuesta ---
-        for (const responseData of respuestasParaEnviar) {
-            console.log(`Enviando respuesta para pregunta ${responseData.pregunta}`, responseData);
-            const respuestaResponse = await fetch('/respuestas/api/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify(responseData)
-            });
-
-            if (!respuestaResponse.ok) {
-                let errorMsg = `Error ${respuestaResponse.status} al guardar respuesta para pregunta ${responseData.pregunta}.`;
-                try {
-                    const errorData = await respuestaResponse.json();
-                    errorMsg += ` Detalles: ${JSON.stringify(errorData)}`;
-                } catch (e) { }
-                console.error(errorMsg);
-            } else {
-                const respuestaGuardada = await respuestaResponse.json();
-                console.log(`Respuesta guardada con éxito para pregunta ${responseData.pregunta}`, respuestaGuardada);
-            }
-        }
 
                 alert('¡Gracias por tus respuestas!');
                 window.location.href = '/dashboard/';  // Changed from '/' to '/dashboard/'
@@ -252,6 +252,36 @@ async function handleSubmit(event) {
                 console.error('Error:', error);
                 alert('Error al enviar respuestas: ' + error.message);
             }
+
+            // --- !!! NUEVO PASO 4: Solicitar Cálculo de Puntaje !!! ---
+            if (registroId) {
+                console.log(`Solicitando cálculo de puntaje para registro ID: ${registroId}`);
+                try {
+                    // Hacemos un POST a la nueva URL: /api/registroRespuestas/{id}/calcular-puntaje/
+                    const puntajeResponse = await fetch(`/registroRespuestas/api/${registroId}/calcular-puntaje/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                            // No necesitamos Content-Type ni body si el backend no espera nada
+                        }
+                    });
+
+                    if (!puntajeResponse.ok) {
+                        // El backend ya debería loguear el error, aquí solo notificamos si falló la llamada
+                        console.error(`La solicitud para calcular puntaje falló con estado ${puntajeResponse.status}.`);
+                        // Opcional: alert('Hubo un problema al calcular el puntaje final.');
+                    } else {
+                        const puntajeResult = await puntajeResponse.json();
+                        console.log('Cálculo de puntaje completado:', puntajeResult);
+                        // Opcional: podrías mostrar el puntaje aquí si quisieras, pero ya está guardado
+                    }
+                } catch (scoreError) {
+                    console.error('Error durante la llamada fetch para calcular puntaje:', scoreError);
+                    // Opcional: alert('Error de red al intentar calcular el puntaje.');
+                }
+            }
+            // --- FIN NUEVO PASO 4 ---
+
         }
 
         function getCookie(name) {
