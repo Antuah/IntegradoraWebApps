@@ -181,15 +181,48 @@
         }
 
         // Update handleSubmit function
+        function validatePassword(password) {
+            const minLength = 8;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumbers = /\d/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?\":{}|<>]/.test(password);
+
+            const errors = [];
+            if (password.length < minLength) errors.push(`La contraseña debe tener al menos ${minLength} caracteres`);
+            if (!hasUpperCase) errors.push('Debe incluir al menos una mayúscula');
+            if (!hasLowerCase) errors.push('Debe incluir al menos una minúscula');
+            if (!hasNumbers) errors.push('Debe incluir al menos un número');
+            if (!hasSpecialChar) errors.push('Debe incluir al menos un carácter especial');
+
+            return {
+                isValid: errors.length === 0,
+                errors: errors
+            };
+        }
+
         async function handleSubmit(event) {
             event.preventDefault();
             
+            const password = document.getElementById('password').value;
+            if (password) {
+                const validation = validatePassword(password);
+                if (!validation.isValid) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Contraseña no segura',
+                        html: validation.errors.join('<br>'),
+                        confirmButtonColor: '#4F46E5'
+                    });
+                    return;
+                }
+            }
+
             const formData = {
                 username: document.getElementById('username').value,
                 rol: document.getElementById('rol').value
             };
 
-            const password = document.getElementById('password').value;
             if (password) formData.password = password;
 
             try {
@@ -207,14 +240,26 @@
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(JSON.stringify(errorData));
+                    throw new Error(errorData.password || JSON.stringify(errorData));
                 }
                 
                 closeModal();
                 loadUsers();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: editingId ? 'Usuario actualizado' : 'Usuario creado',
+                    text: 'Los cambios se han guardado correctamente',
+                    confirmButtonColor: '#4F46E5'
+                });
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al guardar usuario: ' + error.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message,
+                    confirmButtonColor: '#4F46E5'
+                });
             }
         }
 

@@ -57,3 +57,45 @@
     </div>
 </body>
 </html>
+
+<script>
+    function validatePassword(password) {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        const errors = [];
+        if (password.length < minLength) errors.push(`La contraseña debe tener al menos ${minLength} caracteres`);
+        if (!hasUpperCase) errors.push('Debe incluir al menos una mayúscula');
+        if (!hasLowerCase) errors.push('Debe incluir al menos una minúscula');
+        if (!hasNumbers) errors.push('Debe incluir al menos un número');
+        if (!hasSpecialChar) errors.push('Debe incluir al menos un carácter especial');
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const password = document.getElementById('password').value;
+        const validation = validatePassword(password);
+
+        if (!validation.isValid) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Contraseña no segura',
+                html: validation.errors.join('<br>'),
+                confirmButtonColor: '#4F46E5'
+            });
+            return;
+        }
+
+        // Continue with form submission
+        this.submit();
+    });
+</script>

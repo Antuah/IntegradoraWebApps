@@ -12,22 +12,29 @@ import uuid
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.contrib.auth.hashers import make_password
+import re
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
     def perform_create(self, serializer):
-        # Hash password before saving
         password = serializer.validated_data.get('password')
         if password:
+            # Validate password strength
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                raise ValidationError({"password": error_message})
             serializer.validated_data['password'] = make_password(password)
         serializer.save()
 
     def perform_update(self, serializer):
-        # Hash password only if it's being updated
         password = serializer.validated_data.get('password')
         if password:
+            # Validate password strength
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                raise ValidationError({"password": error_message})
             serializer.validated_data['password'] = make_password(password)
         serializer.save()
 
@@ -99,6 +106,20 @@ def solicitar_recuperacion(request):
     
     return render(request, 'solicitar_recuperacion.html')
 
+def validate_password(password):
+    if len(password) < 8:
+        return False, "La contraseña debe tener al menos 8 caracteres"
+    if not re.search(r"[A-Z]", password):
+        return False, "La contraseña debe incluir al menos una mayúscula"
+    if not re.search(r"[a-z]", password):
+        return False, "La contraseña debe incluir al menos una minúscula"
+    if not re.search(r"\d", password):
+        return False, "La contraseña debe incluir al menos un número"
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "La contraseña debe incluir al menos un carácter especial"
+    return True, ""
+
+# Update in your view functions
 def restablecer_password(request, token):
     try:
         usuario = Usuario.objects.get(token_recuperacion=token)
@@ -112,7 +133,14 @@ def restablecer_password(request, token):
                     'error': 'Las contraseñas no coinciden.'
                 })
             
-            # Actualizar contraseña y limpiar token
+            # Validate password strength
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                return render(request, 'restablecer_password.html', {
+                    'error': error_message
+                })
+            
+            # Update password and clear token
             usuario.password = make_password(password)
             usuario.token_recuperacion = None
             usuario.save()
