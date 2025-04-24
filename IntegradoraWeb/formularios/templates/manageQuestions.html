@@ -370,6 +370,70 @@
             };
 
             try {
+                const tipo = document.getElementById('tipo').value;
+                const contenido = document.getElementById('contenido').value.trim();
+
+                // Basic content validation
+                if (!contenido) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'El contenido de la pregunta es obligatorio',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                    return;
+                }
+
+                // Multiple choice specific validations
+                if (tipo === 'opcion_multiple') {
+                    const optionsList = document.getElementById('optionsList');
+                    const options = Array.from(optionsList.children)
+                        .map(optionDiv => ({
+                            content: optionDiv.querySelector('input[type="text"]').value.trim(),
+                            isCorrect: optionDiv.querySelector('input[type="checkbox"]').checked
+                        }))
+                        .filter(option => option.content !== '');
+
+                    // Validate minimum options
+                    if (options.length < 2) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Debe agregar al menos 2 opciones',
+                            confirmButtonColor: '#4F46E5'
+                        });
+                        return;
+                    }
+
+                    // Validate maximum options
+                    if (options.length > 5) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No puede agregar más de 5 opciones',
+                            confirmButtonColor: '#4F46E5'
+                        });
+                        return;
+                    }
+
+                    // Validate at least one correct answer
+                    if (!options.some(opt => opt.isCorrect)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Debe marcar al menos una opción como correcta',
+                            confirmButtonColor: '#4F46E5'
+                        });
+                        return;
+                    }
+                }
+
+                const formData = {
+                    formulario: formId,
+                    tipo: tipo,
+                    contenido: contenido
+                };
+
                 // First, handle the question update/creation
                 const url = editingQuestionId ? `/preguntas/api/${editingQuestionId}/` : '/preguntas/api/';
                 const method = editingQuestionId ? 'PUT' : 'POST';
@@ -447,6 +511,7 @@
                 closeQuestionModal();
                 await loadQuestions();
                 
+                // After successful save, show success message
                 Swal.fire({
                     icon: 'success',
                     title: editingQuestionId ? 'Pregunta actualizada' : 'Pregunta creada',
@@ -459,7 +524,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Error al guardar pregunta: ' + error.message,
+                    text: 'Error al guardar la pregunta: ' + error.message,
                     confirmButtonColor: '#4F46E5'
                 });
             }
