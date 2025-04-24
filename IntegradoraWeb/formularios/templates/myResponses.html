@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Respuestas - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Mis Respuestas</h1>
+            <a href="/dashboard/" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                Volver
+            </a>
+        </div>
+
+        <div id="responsesList" class="space-y-6">
+            <!-- Responses will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadMyResponses);
+
+        async function loadMyResponses() {
+            try {
+                const response = await fetch('/registroRespuestas/api/mis-respuestas/');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const registros = await response.json();
+
+                const responsesList = document.getElementById('responsesList');
+                responsesList.innerHTML = '';
+
+                if (registros.length === 0) {
+                    responsesList.innerHTML = '<p class="text-center text-gray-500 py-4">No has respondido ningún formulario aún.</p>';
+                    return;
+                }
+
+                for (const registro of registros) {
+                    const formResponse = await fetch(`/formularios/api/${registro.formulario}/`);
+                    const form = await formResponse.json();
+                    const respuestas = await fetch(`/respuestas/api/?registro=${registro.id}`).then(r => r.json());
+
+                    let totalPreguntas = respuestas.length;
+                    let respuestasCorrectas = 0;
+
+                    let respuestasHTML = '';
+                    for (const respuesta of respuestas) {
+                        const pregunta = await fetch(`/preguntas/api/${respuesta.pregunta}/`).then(r => r.json());
+                        
+                        // Count correct answers for both types of questions
+                        if (pregunta.tipo === 'opcion_multiple' && respuesta.es_correcta) {
+                            respuestasCorrectas++;
+                        } else if (pregunta.tipo === 'abierta' && respuesta.validada === true) {
+                            respuestasCorrectas++;
+                        }
+
+                        respuestasHTML += `
+                            <div class="mb-4 p-4 border rounded">
+                                <p class="font-medium">${pregunta.contenido}</p>
+                                <p class="text-gray-600 mt-2">Tu respuesta: ${respuesta.contenido}</p>
+                                ${pregunta.tipo === 'opcion_multiple' ?
+                                    `<p class="mt-2 ${respuesta.es_correcta ? 'text-green-600' : 'text-red-600'}">
+                                        ${respuesta.es_correcta ? '✓ Correcta' : '✗ Incorrecta'}
+                                    </p>` :
+                                    (respuesta.validada !== null ? 
+                                        `<p class="mt-2 ${respuesta.validada ? 'text-green-600' : 'text-red-600'}">
+                                            ${respuesta.validada ? '✓ Correcta' : '✗ Incorrecta'}
+                                        </p>` : 
+                                        '<p class="text-gray-500 mt-2">Pendiente de calificación</p>'
+                                    )
+                                }
+                            </div>
+                        `;
+                    }
+
+                    responsesList.innerHTML += `
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="mb-4 pb-3 border-b">
+                                <h2 class="text-xl font-semibold text-indigo-600">${form.titulo}</h2>
+                                <p class="text-sm text-gray-500">Fecha de envío: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                                <p class="text-md font-medium text-gray-700 mt-2">
+                                    Puntaje total: ${respuestasCorrectas}/${totalPreguntas} respuestas correctas
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                ${respuestasHTML}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('responsesList').innerHTML = 
+                    '<p class="text-red-500 text-center">Error al cargar las respuestas</p>';
+            }
+        }
+    </script>
+</body>
+</html>

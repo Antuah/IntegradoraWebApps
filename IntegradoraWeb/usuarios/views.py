@@ -5,6 +5,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from .models import Usuario
 from rest_framework import viewsets
 from .serializers import UsuarioSerializer
+from django.shortcuts import render, redirect, get_object_or_404
 
 from django.contrib.auth.hashers import make_password
 import uuid
@@ -79,26 +80,17 @@ def solicitar_recuperacion(request):
                 reverse('restablecer_password', args=[token])
             )
             
-            # Get email settings from settings or use defaults
-            from django.conf import settings
-            email_host_user = getattr(settings, 'EMAIL_HOST_USER', 'noreply@example.com')
-            
-            try:
-                # Enviar correo
-                send_mail(
-                    'Recuperación de contraseña - FormSIEF',
-                    f'Haz clic en el siguiente enlace para restablecer tu contraseña: {reset_url}',
-                    email_host_user,
-                    [email],
-                    fail_silently=False,
-                )
-                message = 'Se ha enviado un correo con instrucciones para recuperar tu contraseña.'
-            except Exception as e:
-                # For development, just show the reset link
-                message = f'Link de recuperación (desarrollo): {reset_url}'
+            # Enviar correo
+            send_mail(
+                'Recuperación de contraseña - FormSIEF',
+                f'Haz clic en el siguiente enlace para restablecer tu contraseña: {reset_url}',
+                EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
             
             return render(request, 'solicitar_recuperacion.html', {
-                'mensaje': message
+                'mensaje': 'Se ha enviado un correo con instrucciones para recuperar tu contraseña.'
             })
         except Usuario.DoesNotExist:
             return render(request, 'solicitar_recuperacion.html', {
@@ -140,3 +132,11 @@ def logout_view(request):
     request.session.flush()
     # Redirect to login page
     return redirect('login')
+
+
+def profile_view(request):
+    if not request.session.get('user_id'):
+        return redirect('login')
+    
+    user = get_object_or_404(Usuario, id=request.session.get('user_id'))
+    return render(request, 'profile.html', {'user': user})

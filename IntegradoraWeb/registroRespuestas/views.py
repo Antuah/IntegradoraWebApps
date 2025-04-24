@@ -49,3 +49,16 @@ class RegistroRespuestaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     # --- FIN NUEVA ACCIÓN ---
+
+    @action(detail=False, methods=['get'], url_path='mis-respuestas')
+    def mis_respuestas(self, request):
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return Response({'error': 'No autorizado'}, status=401)
+            
+        registros = RegistroRespuesta.objects.filter(
+            usuario_id=user_id
+        ).order_by('-fecha_envio')
+        
+        serializer = self.get_serializer(registros, many=True)
+        return Response(serializer.data)

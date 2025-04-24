@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- Add in the <head> section -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Preguntas</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
@@ -24,8 +26,26 @@
             </div>
         </div>
 
+        </div>
+        
+        <!-- Add search bar -->
+        <div class="mb-6">
+            <div class="relative">
+                <input type="text" 
+                       id="searchInput" 
+                       placeholder="Buscar preguntas..." 
+                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+            </div>
+        </div>
+
         <div id="questionsList" class="space-y-4">
             <!-- Questions will be loaded here -->
+        </div>
+
+        <!-- Add pagination -->
+        <div class="mt-6 flex justify-center space-x-2" id="pagination">
+            <!-- Pagination buttons will be added here -->
         </div>
     </div>
 
@@ -120,72 +140,130 @@
             }
         }
 
+        let allQuestions = [];
+        let filteredQuestions = [];
+        const ITEMS_PER_PAGE = 5;
+        let currentPage = 1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add search input listener
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                filteredQuestions = allQuestions.filter(question => 
+                    question.contenido.toLowerCase().includes(searchTerm)
+                );
+                currentPage = 1;
+                displayQuestions();
+            });
+        });
+
         async function loadQuestions() {
             try {
-                // Debug the form ID
-                console.log('Current URL:', window.location.pathname);
-                const pathParts = window.location.pathname.split('/');
-                console.log('Path parts:', pathParts);
-                console.log('Form ID being used:', formId);
-
-                // Make the API request
                 const response = await fetch(`/preguntas/api/?formulario=${formId}`);
-                console.log('API URL:', `/preguntas/api/?formulario=${formId}`);
-                console.log('Response status:', response.status);
+                if (!response.ok) throw new Error('Network response was not ok');
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Response error:', errorText);
-                    throw new Error(`Network response was not ok: ${errorText}`);
-                }
-                
-                const questions = await response.json();
-                console.log('Raw questions data:', questions);
+                allQuestions = await response.json();
+                filteredQuestions = [...allQuestions];
+                displayQuestions();
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar preguntas',
+                    confirmButtonColor: '#4F46E5'
+                });
+            }
+        }
 
-                const questionsList = document.getElementById('questionsList');
-                console.log('Questions list element:', questionsList);
-                
-                if (!questions || questions.length === 0) {
-                    console.log('No questions found for this form');
-                    questionsList.innerHTML = '<p class="text-gray-500 text-center py-4">No hay preguntas para este formulario</p>';
-                    return;
-                }
+        function displayQuestions() {
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const paginatedQuestions = filteredQuestions.slice(startIndex, endIndex);
+            
+            const questionsList = document.getElementById('questionsList');
+            
+            if (paginatedQuestions.length === 0) {
+                questionsList.innerHTML = '<p class="text-gray-500 text-center py-4">No hay preguntas para mostrar</p>';
+                return;
+            }
 
-                // Rest of the function remains the same
-                questionsList.innerHTML = questions
-                    .map(question => `
-                        <div class="bg-white shadow rounded-lg p-4 mb-4">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <h3 class="text-lg font-medium">${question.contenido}</h3>
-                                    <p class="text-sm text-gray-500">Tipo: ${question.tipo}</p>
-                                    ${question.tipo === 'opcion_multiple' ? 
-                                        `<div id="options-${question.id}" class="mt-2">
-                                            <!-- Options will be loaded here -->
-                                        </div>` : ''}
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="editQuestion(${question.id})" class="text-indigo-600 hover:text-indigo-900">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteQuestion(${question.id})" class="text-red-600 hover:text-red-900">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
+            questionsList.innerHTML = paginatedQuestions
+                .map(question => `
+                    <div class="bg-white shadow rounded-lg p-4 mb-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-medium">${question.contenido}</h3>
+                                <p class="text-sm text-gray-500">Tipo: ${question.tipo}</p>
+                                ${question.tipo === 'opcion_multiple' ? 
+                                    `<div id="options-${question.id}" class="mt-2">
+                                        <!-- Options will be loaded here -->
+                                    </div>` : ''}
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="editQuestion(${question.id})" class="text-indigo-600 hover:text-indigo-900">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteQuestion(${question.id})" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
-                    `).join('');
+                    </div>
+                `).join('');
 
-                // Load options for questions
-                for (const question of questions) {
-                    if (question.tipo === 'opcion_multiple') {
-                        await loadOptions(question.id);
-                    }
+            // Load options for multiple choice questions
+            paginatedQuestions.forEach(question => {
+                if (question.tipo === 'opcion_multiple') {
+                    loadOptions(question.id);
                 }
-            } catch (error) {
-                console.error('Detailed error:', error);
-                alert('Error al cargar preguntas');
+            });
+
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredQuestions.length / ITEMS_PER_PAGE);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            // Previous button
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&laquo; Anterior';
+            prevButton.className = `px-4 py-2 rounded ${currentPage === 1 ? 'bg-gray-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`;
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displayQuestions();
+                }
+            };
+            pagination.appendChild(prevButton);
+
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = `px-4 py-2 rounded ${currentPage === i ? 'bg-indigo-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`;
+                pageButton.onclick = () => {
+                    currentPage = i;
+                    displayQuestions();
+                };
+                pagination.appendChild(pageButton);
             }
+
+            // Next button
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = 'Siguiente &raquo;';
+            nextButton.className = `px-4 py-2 rounded ${currentPage === totalPages ? 'bg-gray-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`;
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    displayQuestions();
+                }
+            };
+            pagination.appendChild(nextButton);
         }
 
         async function loadOptions(questionId) {
@@ -238,7 +316,8 @@
             document.getElementById('questionModalTitle').textContent = questionId ? 'Editar Pregunta' : 'Nueva Pregunta';
             document.getElementById('questionModal').classList.remove('hidden');
             document.getElementById('questionForm').reset();
-            if (questionId) loadQuestionData(questionId);
+            // Remove this line since it's not needed:
+            // if (questionId) loadQuestionData(questionId);
         }
 
         function closeQuestionModal() {
@@ -252,15 +331,30 @@
             document.getElementById('optionsSection').classList.toggle('hidden', tipo !== 'opcion_multiple');
         }
 
-        function addOption() {
+        async function addOption() {
             const optionsList = document.getElementById('optionsList');
+            const optionsCount = optionsList.children.length;
+
+            if (optionsCount >= 5) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Límite alcanzado',
+                    text: 'No se pueden agregar más de 5 opciones',
+                    confirmButtonColor: '#4F46E5'
+                });
+                return;
+            }
+
             const optionDiv = document.createElement('div');
-            optionDiv.className = 'flex items-center space-x-2';
+            optionDiv.className = 'flex items-center space-x-2 mt-2';
             optionDiv.innerHTML = `
-                <input type="text" placeholder="Opción" class="flex-1 border border-gray-300 rounded-md shadow-sm py-1 px-2">
-                <input type="checkbox" title="Marcar como correcta">
+                <input type="text" class="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3" placeholder="Escribe la opción">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600">
+                    <span class="ml-2 text-sm text-gray-600">Correcta</span>
+                </label>
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-900">
-                    <i class="fas fa-trash"></i>
+                    <i class="fas fa-times"></i>
                 </button>
             `;
             optionsList.appendChild(optionDiv);
@@ -268,13 +362,15 @@
 
         async function handleQuestionSubmit(event) {
             event.preventDefault();
+
             const formData = {
-                formulario: formId, // Changed from currentFormId to formId
+                formulario: formId,
                 tipo: document.getElementById('tipo').value,
                 contenido: document.getElementById('contenido').value
             };
 
             try {
+                // First, handle the question update/creation
                 const url = editingQuestionId ? `/preguntas/api/${editingQuestionId}/` : '/preguntas/api/';
                 const method = editingQuestionId ? 'PUT' : 'POST';
 
@@ -293,105 +389,175 @@
                 }
 
                 const questionData = await response.json();
+                const questionId = editingQuestionId || questionData.id;
 
+                // Handle options for multiple choice questions
                 if (formData.tipo === 'opcion_multiple') {
-                    const optionsList = document.getElementById('optionsList');
-                    const options = Array.from(optionsList.children).map(optionDiv => ({
-                        pregunta: questionData.id,
-                        contenido: optionDiv.querySelector('input[type="text"]').value,
-                        es_correcta: optionDiv.querySelector('input[type="checkbox"]').checked
-                    }));
-
-                    if (editingQuestionId) {
-                        await fetch(`/opciones/api/?pregunta=${editingQuestionId}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRFToken': getCookie('csrftoken')
+                    try {
+                        // Get existing options first
+                        const existingOptionsResponse = await fetch(`/opciones/api/?pregunta=${questionId}`);
+                        if (existingOptionsResponse.ok) {
+                            const existingOptions = await existingOptionsResponse.json();
+                            
+                            // Delete each option individually
+                            for (const option of existingOptions) {
+                                await fetch(`/opciones/api/${option.id}/`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'X-CSRFToken': getCookie('csrftoken')
+                                    }
+                                });
                             }
-                        });
-                    }
-
-                    for (const option of options) {
-                        if (!option.contenido.trim()) continue;
-
-                        const optionResponse = await fetch('/opciones/api/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': getCookie('csrftoken')
-                            },
-                            body: JSON.stringify(option)
-                        });
-
-                        if (!optionResponse.ok) {
-                            const optionError = await optionResponse.json();
-                            throw new Error(optionError.detail || 'Error saving options');
                         }
+
+                        // Then create new options
+                        const optionsList = document.getElementById('optionsList');
+                        const options = Array.from(optionsList.children)
+                            .filter(optionDiv => {
+                                const content = optionDiv.querySelector('input[type="text"]').value.trim();
+                                return content !== '';
+                            })
+                            .map(optionDiv => ({
+                                pregunta: questionId,
+                                contenido: optionDiv.querySelector('input[type="text"]').value.trim(),
+                                es_correcta: optionDiv.querySelector('input[type="checkbox"]').checked
+                            }));
+
+                        // Create options sequentially
+                        for (const option of options) {
+                            const optionResponse = await fetch('/opciones/api/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: JSON.stringify(option)
+                            });
+
+                            if (!optionResponse.ok) {
+                                const optionError = await optionResponse.json();
+                                throw new Error(optionError.detail || 'Error saving options');
+                            }
+                        }
+                    } catch (error) {
+                        throw new Error(`Error managing options: ${error.message}`);
                     }
                 }
 
                 closeQuestionModal();
                 await loadQuestions();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: editingQuestionId ? 'Pregunta actualizada' : 'Pregunta creada',
+                    text: 'Los cambios se han guardado correctamente',
+                    confirmButtonColor: '#4F46E5'
+                });
+
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al guardar pregunta: ' + error.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al guardar pregunta: ' + error.message,
+                    confirmButtonColor: '#4F46E5'
+                });
             }
         }
 
         async function deleteQuestion(questionId) {
-            if (!confirm('¿Está seguro de eliminar esta pregunta?')) return;
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: '¿Está seguro?',
+                text: 'Esta acción no se puede deshacer',
+                showCancelButton: true,
+                confirmButtonColor: '#4F46E5',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
 
-            try {
-                const response = await fetch(`/preguntas/api/${questionId}/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/preguntas/api/${questionId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
 
-                if (!response.ok) throw new Error('Network response was not ok');
-                await loadQuestions();
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error al eliminar pregunta');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'La pregunta ha sido eliminada',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                    
+                    await loadQuestions();
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al eliminar pregunta',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                }
             }
         }
 
-        async function loadQuestionData(questionId) {
+        async function editQuestion(questionId) {
             try {
-                const response = await fetch(`/preguntas/api/${questionId}/`); // Changed endpoint
+                // Load question data
+                const response = await fetch(`/preguntas/api/${questionId}/`);
                 if (!response.ok) throw new Error('Network response was not ok');
-                const questions = await response.json();
-                const question = Array.isArray(questions) ? questions[0] : questions; // Handle both array and single object
+                const question = await response.json();
 
+                // Open modal and set editing mode
+                openQuestionModal(questionId);
+
+                // Set form values
                 document.getElementById('tipo').value = question.tipo;
                 document.getElementById('contenido').value = question.contenido;
 
-                toggleOptionsSection();
-
+                // Handle options for multiple choice questions
                 if (question.tipo === 'opcion_multiple') {
-                    const optionsResponse = await fetch(`/opciones/api/?pregunta=${questionId}`); // Changed endpoint
+                    const optionsResponse = await fetch(`/opciones/api/?pregunta=${questionId}`);
                     if (!optionsResponse.ok) throw new Error('Error loading options');
                     const options = await optionsResponse.json();
 
                     const optionsList = document.getElementById('optionsList');
                     optionsList.innerHTML = '';
+                    
                     options.forEach(option => {
                         const optionDiv = document.createElement('div');
-                        optionDiv.className = 'flex items-center space-x-2';
+                        optionDiv.className = 'flex items-center space-x-2 mt-2';
                         optionDiv.innerHTML = `
-                            <input type="text" value="${option.contenido}" class="flex-1 border border-gray-300 rounded-md shadow-sm py-1 px-2">
-                            <input type="checkbox" ${option.es_correcta ? 'checked' : ''} title="Marcar como correcta">
+                            <input type="text" value="${option.contenido}" class="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600" ${option.es_correcta ? 'checked' : ''}>
+                                <span class="ml-2 text-sm text-gray-600">Correcta</span>
+                            </label>
                             <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-900">
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-times"></i>
                             </button>
                         `;
                         optionsList.appendChild(optionDiv);
                     });
+
+                    // Show options section
+                    document.getElementById('optionsSection').classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al cargar datos de la pregunta');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar la pregunta',
+                    confirmButtonColor: '#4F46E5'
+                });
             }
         }
     </script>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calificar Respuestas</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold" id="formTitle">Calificar Respuestas</h1>
+            <a href="/dashboard/" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                Volver
+            </a>
+        </div>
+
+        <!-- Add search bar -->
+        <div class="mb-6">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Buscar por nombre de usuario..."
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+            </div>
+        </div>
+
+        <div id="responsesList" class="space-y-6">
+            <!-- Responses will be loaded here -->
+        </div>
+
+        <!-- Pagination controls -->
+        <div class="mt-6 flex justify-center space-x-2" id="pagination">
+            <!-- Pagination buttons will be added here -->
+        </div>
+    </div>
+
+    <script>
+        const ITEMS_PER_PAGE = 5;
+        let currentPage = 1;
+        let allRegistros = [];
+        let filteredRegistros = [];
+
+        document.addEventListener('DOMContentLoaded', loadResponses);
+
+        // Add search input listener
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            filteredRegistros = allRegistros.filter(registro =>
+                registro.usuario_username && registro.usuario_username.toLowerCase().includes(searchTerm)
+            );
+            currentPage = 1;
+            displayResponses();
+            updatePagination(); // ¡Esto es lo que faltaba!
+        });
+
+        async function loadResponses() {
+            const formId = getFormIdFromUrl();
+            try {
+                const [formData, registros] = await Promise.all([
+                    fetch(`/formularios/api/${formId}/`).then(r => r.json()),
+                    fetch(`/registroRespuestas/api/?formulario=${formId}`).then(r => r.json())
+                ]);
+
+                document.getElementById('formTitle').textContent = `Calificar: ${formData.titulo}`;
+                allRegistros = registros;
+                filteredRegistros = [...registros];
+                await displayResponses();
+
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar las respuestas'
+                });
+            }
+        }
+
+        async function displayResponses() {
+            const responsesList = document.getElementById('responsesList');
+            responsesList.innerHTML = '';
+
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const paginatedRegistros = filteredRegistros.slice(startIndex, endIndex);
+
+            for (const registro of paginatedRegistros) {
+                const respuestas = await fetch(`/respuestas/api/?registro=${registro.id}`).then(r => r.json());
+                const registroElement = document.createElement('div');
+                registroElement.className = 'bg-white rounded-lg shadow p-6';
+
+                let respuestasHTML = '';
+                let needsManualGrading = false;
+
+                // Add user information header
+                const userInfo = registro.usuario_username
+                    ? `<div class="mb-4 pb-3 border-b">
+                        <p class="text-sm font-medium text-indigo-600">Respondido por: ${registro.usuario_username}</p>
+                        <p class="text-xs text-gray-500">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                       </div>`
+                    : `<div class="mb-4 pb-3 border-b">
+                        <p class="text-sm text-gray-500">Respondido anónimamente</p>
+                        <p class="text-xs text-gray-500">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                       </div>`;
+
+                for (const respuesta of respuestas) {
+                    const pregunta = await fetch(`/preguntas/api/${respuesta.pregunta}/`).then(r => r.json());
+
+                    respuestasHTML += `
+                        <div class="mb-4 p-4 border rounded">
+                            <p class="font-medium">${pregunta.contenido}</p>
+                            <p class="text-gray-600 mt-2">Respuesta: ${respuesta.contenido}</p>
+                            ${pregunta.tipo === 'abierta' ? `
+                                <div class="mt-3">
+                                    <label class="block text-sm font-medium text-gray-700">Calificación:</label>
+                                    <select 
+                                        onchange="gradeResponse(${respuesta.id}, this.value)"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                        ${respuesta.validada !== null ? 'disabled' : ''}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        <option value="true" ${respuesta.validada === true ? 'selected' : ''}>Correcta</option>
+                                        <option value="false" ${respuesta.validada === false ? 'selected' : ''}>Incorrecta</option>
+                                    </select>
+                                </div>
+                            ` : `
+                                <p class="mt-2 ${respuesta.es_correcta ? 'text-green-600' : 'text-red-600'}">
+                                    ${respuesta.es_correcta ? '✓ Correcta' : '✗ Incorrecta'}
+                                </p>
+                            `}
+                        </div>
+                    `;
+
+                    if (pregunta.tipo === 'abierta') {
+                        needsManualGrading = true;
+                    }
+                }
+
+                registroElement.innerHTML = `
+                    ${userInfo}
+                    <div class="space-y-4">
+                        ${respuestasHTML}
+                    </div>
+                    ${needsManualGrading ? `
+                        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                            <p class="text-yellow-800">
+                                Este envío contiene preguntas abiertas que requieren calificación manual.
+                            </p>
+                        </div>
+                    ` : ''}
+                `;
+
+                responsesList.appendChild(registroElement);
+            }
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredRegistros.length / ITEMS_PER_PAGE);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            // Previous button
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&laquo; Anterior';
+            prevButton.className = `px-4 py-2 rounded ${currentPage === 1 ? 'bg-gray-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`;
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displayResponses();
+                }
+            };
+            pagination.appendChild(prevButton);
+
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = `px-4 py-2 rounded ${currentPage === i ? 'bg-indigo-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`;
+                pageButton.onclick = () => {
+                    currentPage = i;
+                    displayResponses();
+                };
+                pagination.appendChild(pageButton);
+            }
+
+            // Next button
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = 'Siguiente &raquo;';
+            nextButton.className = `px-4 py-2 rounded ${currentPage === totalPages ? 'bg-gray-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`;
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    displayResponses();
+                }
+            };
+            pagination.appendChild(nextButton);
+        }
+
+        async function gradeResponse(respuestaId, value) {
+            try {
+                const response = await fetch(`/respuestas/api/${respuestaId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        validada: value === 'true'
+                    })
+                });
+
+                if (!response.ok) throw new Error('Error al guardar calificación');
+
+                async function saveGrade(registroId, puntaje) {
+                    try {
+                        const response = await fetch(`/registroRespuestas/api/${registroId}/`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                validada: value === 'true'
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Error al guardar calificación');
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Calificación Guardada',
+                            text: 'La calificación se ha guardado correctamente',
+                            confirmButtonColor: '#4F46E5'
+                        });
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error al guardar calificación: ' + error.message,
+                            confirmButtonColor: '#4F46E5'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al guardar la calificación'
+                });
+            }
+        }
+
+        function getFormIdFromUrl() {
+            const pathParts = window.location.pathname.split('/');
+            return pathParts[pathParts.indexOf('calificar') - 1];
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+
+</html>

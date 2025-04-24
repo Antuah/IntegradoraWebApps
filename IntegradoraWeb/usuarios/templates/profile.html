@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - FormSIEF</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard/"
+                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition flex items-center">
+                            <i class="fas fa-home mr-2"></i>Inicio
+                        </a>
+                    <h1 class="text-2xl font-bold text-gray-900">Mi Perfil</h1>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+            <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                <!-- Profile Header -->
+                <div class="bg-indigo-600 h-32"></div>
+                <div class="relative px-6 pb-6">
+                    <div class="flex justify-center">
+                        <div class="relative -mt-16">
+                            <div class="bg-white p-3 rounded-full shadow-lg">
+                                <div class="w-32 h-32 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-circle text-7xl text-indigo-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Info -->
+                    <div class="mt-6 text-center">
+                        <h2 class="text-2xl font-bold text-gray-900">{{ user.username }}</h2>
+                        <p class="text-indigo-600 font-medium mt-1">
+                            {% if user.rol == 'admin' %}
+                                <i class="fas fa-shield-alt mr-2"></i>Administrador
+                            {% else %}
+                                <i class="fas fa-user mr-2"></i>Usuario Normal
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Detailed Information -->
+                    <div class="mt-8">
+                        <div class="bg-gray-50 rounded-xl p-6 space-y-6">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <i class="fas fa-info-circle mr-2 text-indigo-600"></i>
+                                    Información Detallada
+                                </h3>
+                                <dl class="grid grid-cols-1 gap-6">
+                                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                                        <dt class="text-sm font-medium text-gray-500">Nombre de Usuario</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900">{{ user.username }}</dd>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                                        <dt class="text-sm font-medium text-gray-500">Rol del Sistema</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900">
+                                            {% if user.rol == 'admin' %}
+                                                <span class="text-indigo-600">
+                                                    <i class="fas fa-shield-alt mr-2"></i>Administrador
+                                                </span>
+                                            {% else %}
+                                                <span class="text-green-600">
+                                                    <i class="fas fa-user mr-2"></i>Usuario Normal
+                                                </span>
+                                            {% endif %}
+                                        </dd>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                                        <dt class="text-sm font-medium text-gray-500">Estado de la Cuenta</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-green-600">
+                                            <i class="fas fa-check-circle mr-2"></i>Activo
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

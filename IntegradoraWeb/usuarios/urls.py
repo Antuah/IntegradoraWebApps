@@ -11,5 +11,6 @@ urlpatterns = [
     path('agregar/', views.index, name='usuarios_index'),
     path('recuperar-password/', views.solicitar_recuperacion, name='solicitar_recuperacion'),
     path('restablecer-password/<str:token>/', views.restablecer_password, name='restablecer_password'),
+    path('perfil/', views.profile_view, name='profile'),
     path('', include(router.urls)),
 ]

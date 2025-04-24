@@ -12,5 +12,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('view/<int:form_id>/', view_form, name='view_form'),
     path('responses/<int:form_id>/', views.view_responses, name='view_responses'),
+    path('mis-respuestas/', views.my_responses, name='my_responses'),
     path('<int:form_id>/preguntas/', views.manage_questions, name='manage_questions'),
+    path('<int:form_id>/calificar/', views.grade_responses, name='grade_responses'),
 ]

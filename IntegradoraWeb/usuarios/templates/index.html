@@ -6,8 +6,9 @@
     <title>Gestión de Usuarios - FormSIEF</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50" data-user-id="{{ request.session.user_id }}">
     <div class="min-h-screen">
         <!-- Header -->
         <header class="bg-white shadow">
@@ -219,21 +220,57 @@
 
         // Update deleteUser function
         async function deleteUser(userId) {
-            if (!confirm('¿Está seguro de eliminar este usuario?')) return;
-            
-            try {
-                const response = await fetch(`/usuarios/api/${userId}/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
+            // Check if trying to delete current user
+            const currentUserId = document.body.getAttribute('data-user-id');
+            if (userId === parseInt(currentUserId)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Acción no permitida',
+                    text: 'No puedes eliminar tu propio usuario',
+                    confirmButtonColor: '#4F46E5'
                 });
+                return;
+            }
 
-                if (!response.ok) throw new Error('Network response was not ok');
-                loadUsers();
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error al eliminar usuario');
+            const result = await Swal.fire({
+                title: '¿Está seguro?',
+                text: "Esta acción no se puede deshacer",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#4F46E5',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/usuarios/api/${userId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Usuario eliminado',
+                        text: 'El usuario ha sido eliminado correctamente',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                    
+                    await loadUsers();
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al eliminar usuario',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                }
             }
         }
         

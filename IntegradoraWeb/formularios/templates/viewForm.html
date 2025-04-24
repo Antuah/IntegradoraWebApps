@@ -7,6 +7,7 @@
     <title>Responder Formulario - FormSIEF</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="user_id" content="{{ user_id }}">
 </head>
 
 <body class="bg-gray-50">
@@ -136,14 +137,6 @@
             const form = event.target;
             const csrfToken = getCookie('csrftoken');
 
-            if (!formId || !csrfToken) {
-                console.error("Error: Falta formId o CSRF token.", { formId, csrfToken });
-                alert("Error de configuración al enviar.");
-                return;
-            }
-
-            let registroId = null; // Para almacenar el ID del registro creado
-
             try {
                 // --- PASO 1: Crear el RegistroRespuesta ---
                 console.log(`Intentando crear RegistroRespuesta para formulario ID: ${formId}`);
@@ -154,8 +147,8 @@
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        formulario: parseInt(formId)
-                        // Añade 'usuario': userId si necesitas enviar el ID del usuario
+                        formulario: parseInt(formId),
+                        usuario: parseInt(document.querySelector('meta[name="user_id"]').content) // Add this line
                     })
                 });
 

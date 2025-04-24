@@ -7,10 +7,11 @@
     <title>Gestión de Formularios - FormSIEF</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="bg-gray-50">
-    <div class="min-h-screen">
+    <div class="min-h-screen" data-user-id="{{ request.session.user_id }}">
         <!-- Header -->
         <header class="bg-white shadow">
             <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -27,10 +28,6 @@
                         class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
                         <i class="fas fa-plus mr-2"></i>Nuevo Formulario
                     </button>
-                    <a href="{% url 'logout' %}" 
-                       class="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 transition flex items-center">
-                        <i class="fas fa-sign-out-alt mr-1"></i> Cerrar Sesión
-                    </a>
                 </div>
             </div>
         </header>
@@ -206,9 +203,24 @@
                 const response = await fetch('/formularios/api/');
                 if (!response.ok) throw new Error('Network response was not ok');
                 const forms = await response.json();
+                const userId = document.querySelector('[data-user-id]')?.dataset.userId;
 
                 const formsList = document.getElementById('formsList');
-                formsList.innerHTML = forms.map(form => `
+                
+                // Filter forms to only show those owned by the current user
+                const userForms = forms.filter(form => form.usuario === parseInt(userId));
+
+                if (userForms.length === 0) {
+                    formsList.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                No tienes formularios creados
+                            </td>
+                        </tr>`;
+                    return;
+                }
+
+                formsList.innerHTML = userForms.map(form => `
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${form.titulo}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${form.descripcion || '-'}</td>
@@ -223,6 +235,9 @@
                             <button onclick="viewFormResponses(${form.id})" class="text-blue-600 hover:text-blue-900 mr-3" title="Ver Respuestas">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            <a href="/formularios/${form.id}/calificar/" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Calificar Respuestas">
+                                <i class="fas fa-star"></i>
+                            </a>
                             <button onclick="editForm(${form.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -230,7 +245,6 @@
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
-                        
                     </tr>
                 `).join('');
             } catch (error) {
@@ -293,8 +307,18 @@
                     throw new Error(JSON.stringify(errorData));
                 }
 
+                // Wait for the response data
+                const savedForm = await response.json();
+                console.log('Form saved successfully:', savedForm);
+
+                // Clear the form and close modal
+                document.getElementById('formForm').reset();
                 closeFormModal();
-                loadForms();
+
+                // Reload forms list after a short delay to ensure backend is updated
+                setTimeout(async () => {
+                    await loadForms();
+                }, 100);
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error al guardar formulario: ' + error.message);
@@ -302,21 +326,45 @@
         }
 
         async function deleteForm(formId) {
-            if (!confirm('¿Está seguro de eliminar este formulario?')) return;
+            const result = await Swal.fire({
+                title: '¿Está seguro?',
+                text: "No podrás revertir esta acción",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#4F46E5',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
 
-            try {
-                const response = await fetch(`/formularios/api/${formId}/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/formularios/api/${formId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
 
-                if (!response.ok) throw new Error('Network response was not ok');
-                loadForms();
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error al eliminar formulario');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'El formulario ha sido eliminado correctamente',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                    
+                    await loadForms();
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al eliminar el formulario',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                }
             }
         }
 
@@ -684,121 +732,59 @@
         }
 
         async function viewFormResponses(formId) {
-            console.log(`--- Iniciando viewFormResponses con formId: ${formId} ---`); // <-- Añade esto
-            if (!formId || formId === 'undefined' || formId === 'null') {
-                console.error("¡El ID del formulario es inválido!", formId);
-                alert("Error crítico: No se proporcionó un ID de formulario válido.");
-                return;
-            }
             try {
-                console.log(`Workspaceing data for form ${formId}`);
+                const [registrosResponse, questionsResponse] = await Promise.all([
+                    fetch(`/registroRespuestas/api/?formulario=${formId}`),
+                    fetch(`/preguntas/api/?formulario=${formId}`)
+                ]);
 
-                // Load questions
-                const questionsResponse = await fetch(`/preguntas/api/?formulario=${formId}`);
-                if (!questionsResponse.ok) throw new Error('Error loading questions');
-                const questions = await questionsResponse.json();
-                const questionMap = Object.fromEntries(questions.map(q => [q.id, q]));
-                console.log('Questions loaded:', questionMap);
+                if (!registrosResponse.ok || !questionsResponse.ok) throw new Error('Network response was not ok');
 
-                // Load registros for this form
-                const registrosResponse = await fetch(`/registroRespuestas/api/?formulario=${formId}`);
-                if (!registrosResponse.ok) throw new Error('Error loading response records (registros)');
                 const registros = await registrosResponse.json();
-                console.log('Registros loaded:', registros);
+                const questions = await questionsResponse.json();
+
+                // Create a map of question IDs to questions for easy lookup
+                const questionMap = questions.reduce((map, q) => ({ ...map, [q.id]: q }), {});
+
+                const responsesList = document.getElementById('responsesList');
+                responsesList.innerHTML = '';
 
                 if (registros.length === 0) {
-                    document.getElementById('responsesList').innerHTML = '<p class="text-gray-500">No hay envíos registrados para este formulario.</p>';
-                    document.getElementById('responsesModal').classList.remove('hidden');
+                    responsesList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay respuestas para este formulario</p>';
                     return;
                 }
 
-                // Prepare modal content - group by registro
-                let allResponsesHTML = '<div class="space-y-6">';
-
-                const fetchPromises = registros.map(async (registro, index) => {
+                for (const registro of registros) {
                     try {
-                        console.log(`Workspaceing responses for registro ${registro.id}`);
                         const respuestasResponse = await fetch(`/respuestas/api/?registro=${registro.id}`);
-                        if (!respuestasResponse.ok) {
-                            console.error(`Failed to fetch responses for registro ${registro.id}`);
-                            return `<div class="p-4 border border-red-300 rounded-lg bg-red-50 mb-4">
-                                        <p class="font-semibold text-red-700">Error al cargar respuestas para el Envío ID: ${registro.id}</p>
-                                    </div>`;
-                        }
+                        if (!respuestasResponse.ok) continue;
                         const respuestas = await respuestasResponse.json();
-                        console.log(`Responses for registro ${registro.id}:`, respuestas);
 
-                        if (respuestas.length === 0) {
-                            return `<div class="p-4 border border-gray-300 rounded-lg bg-gray-50 mb-4">
-                                        <p class="font-semibold text-gray-700">Envío ID: ${registro.id} (Sin respuestas encontradas)</p>
-                                        <p class="text-xs text-gray-500">Fecha Registro: ${new Date(registro.fecha_creacion || Date.now()).toLocaleString()}</p> 
-                                    </div>`;
-                        }
+                        const userInfo = registro.usuario ? 
+                            `<p class="text-sm font-medium text-indigo-600 mb-2">Respondido por: ${registro.usuario_username || 'Usuario Anónimo'}</p>` : 
+                            '<p class="text-sm text-gray-500 mb-2">Respondido anónimamente</p>';
 
-                        // Build HTML for this specific registro
-                        const puntaje = registro.puntaje_automatico; // <-- OBTENER EL PUNTAJE
-                        const puntajeTexto = (puntaje === null || puntaje === undefined)
-                            ? 'Pendiente' // O 'N/A' o lo que prefieras si es null
-                            : puntaje === 1 
-                                ? '1 punto' 
-                                : `${puntaje} puntos`; // Texto a mostrar
-
-                        // Añadimos el puntaje al encabezado del bloque del registro
-                        let registroHTML = `
-                    <div class="p-4 border border-indigo-200 rounded-lg bg-white mb-4 shadow-sm">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-lg font-semibold text-indigo-800">Envío #${index + 1} (ID: ${registro.id})</h3>
-                            <span class="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                Puntaje Automático: ${puntajeTexto}  
-                            </span>
-                        </div>
-                        <div class="space-y-3">`; // <-- Inicio del contenedor de respuestas individuales
-
-                        // Mapeamos las respuestas individuales (código existente)
-                        registroHTML += respuestas.map(respuesta => {
-                            const questionData = questionMap[respuesta.pregunta];
-                            const questionText = questionData ? questionData.contenido : `ID Pregunta: ${respuesta.pregunta}`;
-
-                            // Generar HTML para cada respuesta (código existente)
-                            return `
-                        <div class="border-l-4 border-gray-300 pl-3">
-                            <p class="text-sm font-medium text-gray-600">${questionText}</p>
-                            <p class="mt-1 text-base text-gray-900">${respuesta.contenido || '(Vacío)'}</p>
-                             ${respuesta.validada !== null ?
-                                    `<p class="text-xs ${respuesta.validada ? 'text-green-600' : 'text-red-600'}"> (${respuesta.validada ? 'Correcta' : 'Incorrecta'})</p>`
-                                    : ''
-                                }
-                        </div>
-                    `;
-                        }).join('');
-
-                        registroHTML += `</div></div>`; // Cierra space-y-3 y el div del registro
-                        return registroHTML;
-
+                        responsesList.innerHTML += `
+                            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                                ${userInfo}
+                                <p class="text-sm text-gray-500 mb-4">Fecha: ${new Date(registro.fecha_envio).toLocaleString()}</p>
+                                ${respuestas.map(respuesta => `
+                                    <div class="mb-4 border-b pb-4">
+                                        <h3 class="font-medium text-gray-900">${questionMap[respuesta.pregunta]?.contenido || 'Pregunta no encontrada'}</h3>
+                                        <p class="mt-2 text-gray-800">${respuesta.contenido}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
                     } catch (error) {
-                        console.error(`Error processing registro ${registro.id}:`, error);
-                        return `<div class="p-4 border border-red-300 rounded-lg bg-red-50 mb-4">
-                                    <p class="font-semibold text-red-700">Error procesando Envío ID: ${registro.id}</p>
-                                    <p class="text-sm text-red-600">${error.message}</p>
-                                </div>`;
+                        console.error('Error loading responses:', error);
                     }
-                });
+                }
 
-                // Wait for all fetch/process promises to resolve
-                const htmlResults = await Promise.all(fetchPromises);
-
-                allResponsesHTML += htmlResults.join('');
-                allResponsesHTML += '</div>';
-
-                // Update modal content
-                document.getElementById('responsesList').innerHTML = allResponsesHTML;
                 document.getElementById('responsesModal').classList.remove('hidden');
-                console.log('Modal updated');
-
             } catch (error) {
-                console.error('Error in viewFormResponses:', error);
-                document.getElementById('responsesList').innerHTML = `<p class="text-red-600 font-semibold">Error al cargar las respuestas: ${error.message}</p><p class="text-sm text-gray-500">Consulta la consola para más detalles.</p>`;
-                document.getElementById('responsesModal').classList.remove('hidden');
+                console.error('Error:', error);
+                alert('Error al cargar las respuestas');
             }
         }
 
@@ -820,3 +806,63 @@
 </body>
 
 </html>
+
+async function handleSubmit(event) {
+    try {
+        event.preventDefault();
+
+        const formData = {
+            titulo: document.getElementById('titulo').value,
+            descripcion: document.getElementById('descripcion').value
+        };
+
+        try {
+            const url = editingFormId ? `/formularios/api/${editingFormId}/` : '/formularios/api/';
+            const method = editingFormId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(JSON.stringify(errorData));
+            }
+
+            // Wait for the response data
+            const savedForm = await response.json();
+            console.log('Form saved successfully:', savedForm);
+
+            // Clear the form and close modal
+            document.getElementById('formForm').reset();
+            closeFormModal();
+
+            // Reload forms list after a short delay to ensure backend is updated
+            setTimeout(async () => {
+                await loadForms();
+            }, 100);
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al guardar formulario: ' + error.message);
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Éxito',
+            text: 'Formulario guardado correctamente',
+            confirmButtonColor: '#4F46E5'
+        });
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al guardar formulario: ' + error.message,
+            confirmButtonColor: '#4F46E5'
+        });
+    }
+}
